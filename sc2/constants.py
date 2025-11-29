@@ -312,7 +312,9 @@ UNIT_COLOSSUS: UnitTypeId = UnitTypeId.COLOSSUS
 # Used in unit_command.py and action.py to combine only certain abilities
 COMBINEABLE_ABILITIES: set[AbilityId] = {
     AbilityId.MOVE,
+    AbilityId.MOVE_MOVE,
     AbilityId.ATTACK,
+    AbilityId.ATTACK_ATTACK,
     AbilityId.SCAN_MOVE,
     AbilityId.STOP,
     AbilityId.HOLDPOSITION,

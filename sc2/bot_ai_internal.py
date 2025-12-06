@@ -53,7 +53,8 @@ if TYPE_CHECKING:
 class BotAIInternal(ABC):
     """Base class for bots."""
 
-    def __init__(self) -> None:
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self._initialize_variables()
 
     @final

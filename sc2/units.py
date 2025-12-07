@@ -271,7 +271,7 @@ class Units(list):
         :param distance:
         :param position:
         """
-        if not self:
+        if not self or distance == float('inf'):
             return self
         if isinstance(position, Unit):
             distance_squared = distance**2

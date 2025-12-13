@@ -141,6 +141,10 @@ class Ramp:
         raise Exception("Not implemented. Trying to access a ramp that has a wrong amount of upper points.")
 
     @cached_property
+    def depot_locations(self) -> list[Point2]:
+        return [*self.corner_depots, self.depot_in_middle]
+
+    @cached_property
     def barracks_can_fit_addon(self) -> bool:
         """Test if a barracks can fit an addon at natural ramp"""
         # https://i.imgur.com/4b2cXHZ.png

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
@@ -1236,13 +1237,14 @@ class Unit:
 
     # Unit functions
 
-    def has_buff(self, buff: BuffId) -> bool:
+    def has_buff(self, buff: BuffId | Iterable[BuffId]) -> bool:
         """Checks if unit has buff 'buff'.
 
         :param buff:
         """
-        assert isinstance(buff, BuffId), f"{buff} is no BuffId"
-        return buff in self.buffs
+        if isinstance(buff, BuffId):
+            return buff in self.buffs
+        return any(b in self.buffs for b in buff)
 
     def train(
         self,

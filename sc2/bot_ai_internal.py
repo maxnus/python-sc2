@@ -110,6 +110,7 @@ class BotAIInternal(ABC):
         # pyre-ignore[11]
         self.race: Race | None = None
         self.enemy_race: Race | None = None
+        self.enemy_starting_race: Race | None = None
         self._generated_frame = -100
         self._units_created: Counter = Counter()
         self._unit_tags_seen_this_game: set[int] = set()
@@ -632,7 +633,7 @@ class BotAIInternal(ABC):
         self.race: Race = Race(self.game_info.player_races.get(self.player_id, 0))
         # Get the enemy's race only if we are not observer (replay) and the game has 2 players
         if self.player_id > 0 and len(self.game_info.player_races) == 2:
-            self.enemy_race: Race = Race(self.game_info.player_races[3 - self.player_id])
+            self.enemy_race = self.enemy_starting_race = Race(self.game_info.player_races[3 - self.player_id])
 
         self._distances_override_functions(self.distance_calculation_method)
 

@@ -237,6 +237,8 @@ class Unit:
     @cached_property
     def ground_dps(self) -> float:
         """Returns the dps against ground units. Does not include upgrades."""
+        if self.type_id == UNIT_BATTLECRUISER:
+            return 8 / 0.224
         if self.can_attack_ground:
             weapon = next((weapon for weapon in self._weapons if weapon.type in TARGET_GROUND), None)
             if weapon:
@@ -268,6 +270,8 @@ class Unit:
     @cached_property
     def air_dps(self) -> float:
         """Returns the dps against air units. Does not include upgrades."""
+        if self.type_id == UNIT_BATTLECRUISER:
+            return 5 / 0.224
         if self.can_attack_air:
             weapon = next((weapon for weapon in self._weapons if weapon.type in TARGET_AIR), None)
             if weapon:

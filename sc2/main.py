@@ -146,6 +146,7 @@ async def _play_game_ai(
     async def run_bot_iteration(iteration: int):
         nonlocal gs
         logger.debug(f"Running AI step, it={iteration} {gs.game_loop / 22.4:.2f}s")
+        await ai.on_step_start(iteration)
         # Issue event like unit created or unit destroyed
         await ai.issue_events()
         # In on_step various errors can occur - log properly

@@ -1358,7 +1358,15 @@ class BotAI(BotAIInternal):
         At this point, game_data, game_info and the first iteration of game_state (self.state) are available.
         """
 
-    async def on_step(self, iteration: int):
+    async def on_step_start(self, iteration: int) -> None:
+        """
+        Override this in your bot class.
+        This function is called on every game step, but before any events are issued.
+
+        :param iteration:
+        """
+
+    async def on_step(self, iteration: int) -> None:
         """
         You need to implement this function!
         Override this in your bot class.

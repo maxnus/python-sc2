@@ -426,14 +426,24 @@ class Unit:
             return 0
         return self._proto.shield / self._proto.shield_max
 
+    @property
+    def shield_health(self) -> float:
+        """Returns the combined shield + health the unit has."""
+        return self._proto.shield + self._proto.health
+
+    @property
+    def shield_health_max(self) -> float:
+        """Returns the combined maximum shield + health the unit can have."""
+        return self._proto.shield_max + self._proto.health_max
+
     @cached_property
     def shield_health_percentage(self) -> float:
-        """Returns the percentage of combined shield + hp points the unit has.
+        """Returns the percentage of combined shield + health the unit has.
         Also takes build progress into account."""
-        max_ = (self._proto.shield_max + self._proto.health_max) * self.build_progress
+        max_ = self.shield_health_max * self.build_progress
         if max_ == 0:
             return 0
-        return (self._proto.shield + self._proto.health) / max_
+        return self.shield_health / max_
 
     @property
     def energy(self) -> float:

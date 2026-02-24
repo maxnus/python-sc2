@@ -107,7 +107,7 @@ async def _play_game_ai(
 ) -> Result:
     gs: GameState | None = None
 
-    async def initialize_first_step() -> Result | None:
+    async def initialize_first_step() -> None:
         nonlocal gs
         ai._initialize_variables()
 
@@ -126,22 +126,13 @@ async def _play_game_ai(
             return client._game_result[player_id]
         gs = GameState(state.observation)
         proto_game_info = await client._execute(game_info=sc_pb.RequestGameInfo())
-        try:
-            ai._prepare_step(gs, proto_game_info)
-            await ai.on_before_start()
-            ai._prepare_first_step()
-            await ai.on_start()
-        # TODO Catching too general exception Exception (broad-except)
 
-        except Exception as e:
-            logger.exception(f"Caught unknown exception in AI on_start: {e}")
-            logger.error("Resigning due to previous error")
-            await ai.on_end(Result.Defeat)
-            return Result.Defeat
+        ai._prepare_step(gs, proto_game_info)
+        await ai.on_before_start()
+        ai._prepare_first_step()
+        await ai.on_start()
 
-    result = await initialize_first_step()
-    if result is not None:
-        return result
+    await initialize_first_step()
 
     async def run_bot_iteration(iteration: int):
         nonlocal gs

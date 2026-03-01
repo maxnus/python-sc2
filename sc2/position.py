@@ -199,6 +199,17 @@ class Point2(Pointlike):
     def offset(self, p: Point2) -> Point2:
         return Point2((self[0] + p[0], self[1] + p[1]))
 
+    @property
+    def angle(self) -> float:
+        """Returns the angle of the point in radians, where (0, 0) is 0, (1, 0) is pi/2 and (0, 1) is pi."""
+        return math.atan2(self[1], self[0])
+
+    def rotate(self, angle: float) -> Point2:
+        """Rotates the point by the given angle in radians around the origin (0, 0)."""
+        cos_angle = math.cos(angle)
+        sin_angle = math.sin(angle)
+        return Point2((self[0] * cos_angle - self[1] * sin_angle, self[0] * sin_angle + self[1] * cos_angle))
+
     def random_on_distance(self, distance) -> Point2:
         if isinstance(distance, (tuple, list)):  # interval
             distance = distance[0] + random.random() * (distance[1] - distance[0])

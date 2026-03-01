@@ -301,6 +301,14 @@ class Unit:
                     return b.bonus, Attribute(b.attribute).name
         return None
 
+    def bonus_damage_against_target(self, target: Unit) -> int:
+        bonus = self.bonus_damage
+        if bonus is not None:
+            for attribute in target._type_data.attributes:
+                if Attribute(attribute).name == bonus[1]:
+                    return bonus[0]
+        return 0
+
     @property
     def armor(self) -> float:
         """Returns the armor of the unit. Does not include upgrades"""

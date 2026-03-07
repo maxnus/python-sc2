@@ -26,6 +26,7 @@ from sc2.maps import Map
 from sc2.player import AbstractPlayer, Bot, BotProcess, Human
 from sc2.portconfig import Portconfig
 from sc2.protocol import ConnectionAlreadyClosedError, ProtocolError
+from aiohttp import ClientConnectionResetError
 from sc2.proxy import Proxy
 from sc2.sc2process import KillSwitch, SC2Process
 
@@ -149,7 +150,8 @@ async def _play_game_ai(
         except Exception as e:
             logger.exception(f"Caught unknown exception: {e}")
             raise
-        await ai._after_step()
+        with suppress(ClientConnectionResetError):
+            await ai._after_step()
         logger.debug("Running AI step: done")
 
     # Only used in realtime=True
@@ -190,7 +192,8 @@ async def _play_game_ai(
                 return client._game_result[player_id]
 
             # TODO: In bot vs bot, if the other bot ends the game, this bot gets stuck in requesting an observation when using main.py:run_multiple_games
-            await client.step()
+            with suppress(ClientConnectionResetError):
+                await client.step()
     return Result.Undecided
 
 

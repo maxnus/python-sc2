@@ -1472,7 +1472,9 @@ class Unit:
         """
         :param other:
         """
-        return self.tag == getattr(other, "tag", -1)
+        if isinstance(other, Unit):
+            return self.tag == other.tag
+        return NotImplemented
 
     def __call__(
         self,

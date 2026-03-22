@@ -196,7 +196,10 @@ class Point2(Pointlike):
         """Rounds each number in the tuple to the amount of given decimals."""
         return Point2((round(self[0], decimals), round(self[1], decimals)))
 
-    def offset(self, p: Point2) -> Point2:
+    def snap(self) -> Point2:
+        return Point2((int(self[0]) + 0.5, int(self[1]) + 0.5))
+
+    def offset(self, p: Point2 | tuple[float, float]) -> Point2:
         return Point2((self[0] + p[0], self[1] + p[1]))
 
     @property

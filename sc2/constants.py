@@ -497,7 +497,7 @@ ALL_GAS: set[UnitTypeId] = {
     UnitTypeId.EXTRACTORRICH,
 }
 # pyre-ignore[11]
-DAMAGE_BONUS_PER_UPGRADE: dict[UnitTypeId, dict[TargetType, Any]] = {
+DAMAGE_BONUS_PER_UPGRADE: dict[UnitTypeId, dict[int, Any]] = {
     #
     # Protoss
     #

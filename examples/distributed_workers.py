@@ -8,7 +8,7 @@ from sc2.player import Bot, Computer
 
 
 class TerranBot(BotAI):
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         await self.distribute_workers()
         await self.build_supply()
         await self.build_workers()

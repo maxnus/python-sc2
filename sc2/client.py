@@ -3,31 +3,33 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
+from aiohttp import ClientWebSocketResponse
 from loguru import logger
 
-# pyre-ignore[21]
 from s2clientprotocol import debug_pb2 as debug_pb
 from s2clientprotocol import query_pb2 as query_pb
 from s2clientprotocol import raw_pb2 as raw_pb
 from s2clientprotocol import sc2api_pb2 as sc_pb
 from s2clientprotocol import spatial_pb2 as spatial_pb
-
 from sc2.action import combine_actions
 from sc2.data import ActionResult, ChatChannel, Race, Result, Status
 from sc2.game_data import AbilityData, GameData
 from sc2.game_info import GameInfo
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId
+from sc2.portconfig import Portconfig
 from sc2.position import Point2, Point3
 from sc2.protocol import ConnectionAlreadyClosedError, Protocol, ProtocolError
 from sc2.renderer import Renderer
 from sc2.unit import Unit
+from sc2.unit_command import UnitCommand
 from sc2.units import Units
 
 
 class Client(Protocol):
-    def __init__(self, ws, save_replay_path: str = None) -> None:
+    def __init__(self, ws: ClientWebSocketResponse, save_replay_path: str | None = None) -> None:
         """
         :param ws:
         """
@@ -52,7 +54,14 @@ class Client(Protocol):
     def in_game(self) -> bool:
         return self._status in {Status.in_game, Status.in_replay}
 
-    async def join_game(self, name=None, race=None, observed_player_id=None, portconfig=None, rgb_render_config=None):
+    async def join_game(
+        self,
+        name: str | None = None,
+        race: Race | None = None,
+        observed_player_id: int | None = None,
+        portconfig: Portconfig | None = None,
+        rgb_render_config: dict[str, Any] | None = None,
+    ):
         ifopts = sc_pb.InterfaceOptions(
             raw=True,
             score=True,
@@ -121,14 +130,14 @@ class Client(Protocol):
             if is_resign:
                 raise
 
-    async def save_replay(self, path) -> None:
+    async def save_replay(self, path: str) -> None:
         logger.debug("Requesting replay from server")
         result = await self._execute(save_replay=sc_pb.RequestSaveReplay())
         with Path(path).open("wb") as f:
             f.write(result.save_replay.data)
         logger.info(f"Saved replay to {path}")
 
-    async def observation(self, game_loop: int = None):
+    async def observation(self, game_loop: int | None = None):
         if game_loop is not None:
             result = await self._execute(observation=sc_pb.RequestObservation(game_loop=game_loop))
         else:
@@ -152,13 +161,13 @@ class Client(Protocol):
 
         return result
 
-    async def step(self, step_size: int = None):
+    async def step(self, step_size: int | None = None):
         """EXPERIMENTAL: Change self._client.game_step during the step function to increase or decrease steps per second"""
         step_size = step_size or self.game_step
         return await self._execute(step=sc_pb.RequestStep(count=step_size))
 
     async def get_game_data(self) -> GameData:
-        result = await self._execute(
+        result: sc_pb.Response = await self._execute(
             data=sc_pb.RequestData(ability_id=True, unit_type_id=True, upgrade_id=True, buff_id=True, effect_id=True)
         )
         return GameData(result.data)
@@ -194,9 +203,9 @@ class Client(Protocol):
         result = await self._execute(game_info=sc_pb.RequestGameInfo())
         return GameInfo(result.game_info)
 
-    async def actions(self, actions, return_successes: bool = False):
+    async def actions(self, actions: list[UnitCommand], return_successes: bool = False) -> list[ActionResult]:
         if not actions:
-            return None
+            return []
         if not isinstance(actions, list):
             actions = [actions]
 
@@ -470,8 +479,8 @@ class Client(Protocol):
     def debug_text_screen(
         self,
         text: str,
-        pos: Point2 | Point3 | tuple | list,
-        color: tuple | list | Point3 = None,
+        pos: Point2 | Point3 | tuple[float, float] | list[float],
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
         size: int = 8,
     ) -> None:
         """
@@ -491,14 +500,18 @@ class Client(Protocol):
     def debug_text_2d(
         self,
         text: str,
-        pos: Point2 | Point3 | tuple | list,
-        color: tuple | list | Point3 = None,
+        pos: Point2 | Point3 | tuple[float, float] | list[float],
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
         size: int = 8,
     ):
         return self.debug_text_screen(text, pos, color, size)
 
     def debug_text_world(
-        self, text: str, pos: Unit | Point3, color: tuple | list | Point3 = None, size: int = 8
+        self,
+        text: str,
+        pos: Unit | Point3,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+        size: int = 8,
     ) -> None:
         """
         Draws a text at Point3 position in the game world.
@@ -514,10 +527,21 @@ class Client(Protocol):
         assert isinstance(pos, Point3)
         self._debug_texts.append(DrawItemWorldText(text=text, color=color, start_point=pos, font_size=size))
 
-    def debug_text_3d(self, text: str, pos: Unit | Point3, color: tuple | list | Point3 = None, size: int = 8):
+    def debug_text_3d(
+        self,
+        text: str,
+        pos: Unit | Point3,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+        size: int = 8,
+    ):
         return self.debug_text_world(text, pos, color, size)
 
-    def debug_line_out(self, p0: Unit | Point3, p1: Unit | Point3, color: tuple | list | Point3 = None) -> None:
+    def debug_line_out(
+        self,
+        p0: Unit | Point3,
+        p1: Unit | Point3,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+    ) -> None:
         """
         Draws a line from p0 to p1.
 
@@ -537,7 +561,7 @@ class Client(Protocol):
         self,
         p_min: Unit | Point3,
         p_max: Unit | Point3,
-        color: tuple | list | Point3 = None,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
     ) -> None:
         """
         Draws a box with p_min and p_max as corners of the box.
@@ -558,7 +582,7 @@ class Client(Protocol):
         self,
         pos: Unit | Point3,
         half_vertex_length: float = 0.25,
-        color: tuple | list | Point3 = None,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
     ) -> None:
         """
         Draws a box center at a position 'pos', with box side lengths (vertices) of two times 'half_vertex_length'.
@@ -574,7 +598,12 @@ class Client(Protocol):
         p1 = pos + Point3((half_vertex_length, half_vertex_length, half_vertex_length))
         self._debug_boxes.append(DrawItemBox(start_point=p0, end_point=p1, color=color))
 
-    def debug_sphere_out(self, p: Unit | Point3, r: float, color: tuple | list | Point3 = None) -> None:
+    def debug_sphere_out(
+        self,
+        p: Unit | Point3,
+        r: float,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+    ) -> None:
         """
         Draws a sphere at point p with radius r.
 
@@ -752,12 +781,12 @@ class Client(Protocol):
 
 class DrawItem:
     @staticmethod
-    def to_debug_color(color: tuple | Point3):
+    def to_debug_color(color: tuple[float, float, float] | list[float] | Point3 | None = None) -> debug_pb.Color:
         """Helper function for color conversion"""
         if color is None:
             return debug_pb.Color(r=255, g=255, b=255)
         # Need to check if not of type Point3 because Point3 inherits from tuple
-        if isinstance(color, (tuple, list)) and not isinstance(color, Point3) and len(color) == 3:
+        if isinstance(color, (tuple, list)) or isinstance(color, Point3) and len(color) == 3:
             return debug_pb.Color(r=color[0], g=color[1], b=color[2])
         # In case color is of type Point3
         r = getattr(color, "r", getattr(color, "x", 255))
@@ -773,11 +802,17 @@ class DrawItem:
 
 
 class DrawItemScreenText(DrawItem):
-    def __init__(self, start_point: Point2 = None, color: Point3 = None, text: str = "", font_size: int = 8) -> None:
-        self._start_point: Point2 = start_point
-        self._color: Point3 = color
-        self._text: str = text
-        self._font_size: int = font_size
+    def __init__(
+        self,
+        start_point: Point2,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+        text: str = "",
+        font_size: int = 8,
+    ) -> None:
+        self._start_point = start_point
+        self._color = color
+        self._text = text
+        self._font_size = font_size
 
     def to_proto(self):
         return debug_pb.DebugText(
@@ -793,7 +828,13 @@ class DrawItemScreenText(DrawItem):
 
 
 class DrawItemWorldText(DrawItem):
-    def __init__(self, start_point: Point3 = None, color: Point3 = None, text: str = "", font_size: int = 8) -> None:
+    def __init__(
+        self,
+        start_point: Point3 = None,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+        text: str = "",
+        font_size: int = 8,
+    ) -> None:
         self._start_point: Point3 = start_point
         self._color: Point3 = color
         self._text: str = text
@@ -813,7 +854,12 @@ class DrawItemWorldText(DrawItem):
 
 
 class DrawItemLine(DrawItem):
-    def __init__(self, start_point: Point3 = None, end_point: Point3 = None, color: Point3 = None) -> None:
+    def __init__(
+        self,
+        start_point: Point3 = None,
+        end_point: Point3 = None,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+    ) -> None:
         self._start_point: Point3 = start_point
         self._end_point: Point3 = end_point
         self._color: Point3 = color
@@ -829,7 +875,12 @@ class DrawItemLine(DrawItem):
 
 
 class DrawItemBox(DrawItem):
-    def __init__(self, start_point: Point3 = None, end_point: Point3 = None, color: Point3 = None) -> None:
+    def __init__(
+        self,
+        start_point: Point3 = None,
+        end_point: Point3 = None,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+    ) -> None:
         self._start_point: Point3 = start_point
         self._end_point: Point3 = end_point
         self._color: Point3 = color
@@ -846,7 +897,12 @@ class DrawItemBox(DrawItem):
 
 
 class DrawItemSphere(DrawItem):
-    def __init__(self, start_point: Point3 = None, radius: float = None, color: Point3 = None) -> None:
+    def __init__(
+        self,
+        start_point: Point3 = None,
+        radius: float = None,
+        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+    ) -> None:
         self._start_point: Point3 = start_point
         self._radius: float = radius
         self._color: Point3 = color

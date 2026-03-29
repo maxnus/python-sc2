@@ -14,9 +14,7 @@ from typing import TYPE_CHECKING, Any, final
 import numpy as np
 from loguru import logger
 
-# pyre-ignore[21]
 from s2clientprotocol import sc2api_pb2 as sc_pb
-
 from sc2.cache import property_cache_once_per_frame
 from sc2.constants import (
     ALL_GAS,
@@ -35,14 +33,13 @@ from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
 from sc2.pixel_map import PixelMap
-from sc2.position import Point2
+from sc2.position import Point2, _PointLike
 from sc2.unit import Unit
 from sc2.unit_command import UnitCommand
 from sc2.units import Units
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    # pyre-ignore[21]
     from scipy.spatial.distance import cdist, pdist
 
 if TYPE_CHECKING:
@@ -584,7 +581,7 @@ class BotAIInternal(ABC):
 
     @final
     @staticmethod
-    def prevent_double_actions(action) -> bool:
+    def prevent_double_actions(action: UnitCommand) -> bool:
         """
         :param action:
         """
@@ -611,7 +608,13 @@ class BotAIInternal(ABC):
 
     @final
     def _prepare_start(
-        self, client, player_id: int, game_info, game_data, realtime: bool = False, base_build: int = -1
+        self,
+        client: Client,
+        player_id: int,
+        game_info: GameInfo,
+        game_data: GameData,
+        realtime: bool = False,
+        base_build: int = -1,
     ) -> None:
         """
         Ran until game start to set game and player data.
@@ -648,13 +651,13 @@ class BotAIInternal(ABC):
         self._time_before_step: float = time.perf_counter()
 
     @final
-    def _prepare_step(self, state, proto_game_info) -> None:
+    def _prepare_step(self, state: GameState, proto_game_info: sc_pb.Response) -> None:
         """
         :param state:
         :param proto_game_info:
         """
         # Set attributes from new state before on_step."""
-        self.state: GameState = state  # See game_state.py
+        self.state = state  # See game_state.py
         # update pathing grid, which unfortunately is in GameInfo instead of GameState
         self.game_info.pathing_grid = PixelMap(proto_game_info.game_info.start_raw.pathing_grid, in_bits=True)
         # Required for events, needs to be before self.units are initialized so the old units are stored
@@ -1015,16 +1018,16 @@ class BotAIInternal(ABC):
     @final
     @staticmethod
     def distance_math_hypot(
-        p1: tuple[float, float] | Point2,
-        p2: tuple[float, float] | Point2,
+        p1: _PointLike,
+        p2: _PointLike,
     ) -> float:
         return math.hypot(p1[0] - p2[0], p1[1] - p2[1])
 
     @final
     @staticmethod
     def distance_math_hypot_squared(
-        p1: tuple[float, float] | Point2,
-        p2: tuple[float, float] | Point2,
+        p1: _PointLike,
+        p2: _PointLike,
     ) -> float:
         return pow(p1[0] - p2[0], 2) + pow(p1[1] - p2[1], 2)
 

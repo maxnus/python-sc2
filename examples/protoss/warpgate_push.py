@@ -9,6 +9,7 @@ from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
 from sc2.main import run_game
 from sc2.player import Bot, Computer
+from sc2.unit import Unit
 
 
 class WarpGateBot(BotAI):
@@ -16,11 +17,11 @@ class WarpGateBot(BotAI):
         # Initialize inherited class
         self.proxy_built = False
 
-    async def warp_new_units(self, proxy):
+    async def warp_new_units(self, proxy: Unit):
         for warpgate in self.structures(UnitTypeId.WARPGATE).ready:
-            abilities = await self.get_available_abilities(warpgate)
+            abilities = await self.get_available_abilities([warpgate])
             # all the units have the same cooldown anyway so let's just look at ZEALOT
-            if AbilityId.WARPGATETRAIN_STALKER in abilities:
+            if AbilityId.WARPGATETRAIN_STALKER in abilities[0]:
                 pos = proxy.position.to2.random_on_distance(4)
                 placement = await self.find_placement(AbilityId.WARPGATETRAIN_STALKER, pos, placement_step=1)
                 if placement is None:
@@ -29,7 +30,7 @@ class WarpGateBot(BotAI):
                     return
                 warpgate.warp_in(UnitTypeId.STALKER, placement)
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         await self.distribute_workers()
 
         if not self.townhalls.ready:

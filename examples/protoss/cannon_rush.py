@@ -9,7 +9,7 @@ from sc2.player import Bot, Computer
 
 
 class CannonRushBot(BotAI):
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         if iteration == 0:
             await self.chat_send("(probe)(pylon)(cannon)(cannon)(gg)")
 

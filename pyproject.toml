@@ -1,9 +1,9 @@
 [project]
 name = "burnysc2"
-version = "7.1.1"
+version = "7.1.3"
 description = "A StarCraft II API Client for Python 3"
 authors = [{ name = "BurnySc2", email = "gamingburny@gmail.com" }]
-requires-python = ">=3.9, <3.14"
+requires-python = ">=3.9, <3.15"
 keywords = ["StarCraft", "StarCraft 2", "StarCraft II", "AI", "Bot"]
 classifiers = [
     "Intended Audience :: Developers",
@@ -16,25 +16,28 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS :: MacOS X",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 readme = "README.md"
+license-files = ["LICENSE"]
 
 dependencies = [
     "aiohttp>=3.11.10",
     "loguru>=0.7.3",
     "mpyq>=0.2.5",
+    "numpy>=2.3.3; python_full_version >= '3.14'",
     "numpy>=2.1.0; python_full_version >= '3.13'",
     "numpy>=2.0.0; python_full_version < '3.13'",
     "portpicker>=1.6.0",
     "protobuf>=7.34.1,<8",
     "pys2clientprotocol>=1.0.0",
+    "scipy>=1.16.3; python_full_version >= '3.14'",
     "scipy>=1.14.1; python_full_version >= '3.13'",
     "scipy>=1.7.1; python_full_version < '3.13'",
 ]
@@ -45,7 +48,8 @@ dev = [
     "hypothesis>=6.122.3",
     "matplotlib>=3.9.4",
     "mypy>=1.13.0",
-    "pillow>=11.0.0",
+    "pillow>=12.0.0; python_full_version >= '3.14'",
+    "pillow>=11.0.0; python_full_version < '3.14'",
     "pre-commit>=4.0.1",
     "pyglet>=2.0.20",
     "pylint>=3.3.2",
@@ -66,8 +70,10 @@ dev = [
 ]
 
 [tool.setuptools]
-license-files = []
-package-dir = { sc2 = "sc2" }
+package-dir = { sc2 = "sc2", s2clientprotocol = "s2clientprotocol" }
+
+[tool.setuptools.package-data]
+sc2 = ["py.typed", "*.pyi"]
 
 [build-system]
 # https://packaging.python.org/en/latest/tutorials/packaging-projects/#choosing-a-build-backend

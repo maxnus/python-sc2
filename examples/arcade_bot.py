@@ -42,7 +42,7 @@ class MarineSplitChallenge(BotAI):
         await self.chat_send("Edit this message for automatic chat commands.")
         self.client.game_step = 2
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         # do marine micro vs zerglings
         for unit in self.units(UnitTypeId.MARINE):
             if self.enemy_units:

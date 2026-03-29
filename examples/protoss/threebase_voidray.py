@@ -9,7 +9,7 @@ from sc2.player import Bot, Computer
 
 
 class ThreebaseVoidrayBot(BotAI):
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         target_base_count = 3
         target_stargate_count = 3
 

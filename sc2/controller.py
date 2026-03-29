@@ -1,17 +1,22 @@
+from __future__ import annotations
+
 import platform
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+from aiohttp import ClientWebSocketResponse
 from loguru import logger
 
-# pyre-ignore[21]
 from s2clientprotocol import sc2api_pb2 as sc_pb
-
 from sc2.player import Computer
 from sc2.protocol import Protocol
 
+if TYPE_CHECKING:
+    from sc2.sc2process import SC2Process
+
 
 class Controller(Protocol):
-    def __init__(self, ws, process) -> None:
+    def __init__(self, ws: ClientWebSocketResponse, process: SC2Process) -> None:
         super().__init__(ws)
         self._process = process
 

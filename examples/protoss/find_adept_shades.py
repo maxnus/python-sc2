@@ -13,7 +13,7 @@ from sc2.position import Point2
 class FindAdeptShadesBot(BotAI):
     def __init__(self):
         self.shaded = False
-        self.shades_mapping = {}
+        self.shades_mapping: dict[int, int] = {}
 
     async def on_start(self):
         self.client.game_step = 2

@@ -7,27 +7,16 @@ set -e
 
 # Set which versions to use
 export VERSION_NUMBER=${VERSION_NUMBER:-0.9.9}
-export PYTHON_VERSION=${PYTHON_VERSION:-3.12}
+export PYTHON_VERSION=${PYTHON_VERSION:-3.13}
 export SC2_VERSION=${SC2_VERSION:-4.10}
 
 # For better readability, set local variables
 IMAGE_NAME=burnysc2/python-sc2-docker:py_$PYTHON_VERSION-sc2_$SC2_VERSION-v$VERSION_NUMBER
 BUILD_ARGS="--build-arg PYTHON_VERSION=$PYTHON_VERSION --build-arg SC2_VERSION=$SC2_VERSION"
 
-# Allow image squashing by enabling experimental docker features
-# https://stackoverflow.com/a/21164441/10882657
-# https://github.com/actions/virtual-environments/issues/368#issuecomment-582387669
-# file=/etc/docker/daemon.json
-# if [ ! -e "$file" ]; then
-#   echo $'{\n    "experimental": true\n}' | sudo tee /etc/docker/daemon.json
-#   sudo systemctl restart docker.service
-# fi
-
 # Build image without context
 # https://stackoverflow.com/a/54666214/10882657
-docker build -t $IMAGE_NAME $BUILD_ARGS - < dockerfiles/Dockerfile
-# Build squashed image where the layers are combined to one
-#docker build -t $IMAGE_NAME-squashed --squash $BUILD_ARGS - < dockerfiles/Dockerfile
+docker build -f dockerfiles/Dockerfile -t $IMAGE_NAME $BUILD_ARGS .
 
 # Delete previous container if it exists
 docker rm -f test_container
@@ -46,6 +35,7 @@ docker cp uv.lock test_container:/root/python-sc2/
 docker exec -i test_container bash -c "pip install uv && cd python-sc2 && uv sync --no-cache --no-install-project"
 
 docker cp sc2 test_container:/root/python-sc2/sc2
+docker cp s2clientprotocol test_container:/root/python-sc2/s2clientprotocol
 docker cp test test_container:/root/python-sc2/test
 
 # Run various test bots

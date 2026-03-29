@@ -25,9 +25,11 @@ class Portconfig:
     E.g. for 1v1, there will be only 1 guest. For 2v2 (coming soonTM), there would be 3 guests.
     """
 
-    def __init__(self, guests: int = 1, server_ports=None, player_ports=None) -> None:
+    def __init__(
+        self, guests: int = 1, server_ports: list[int] | None = None, player_ports: list[int] | None = None
+    ) -> None:
         self.shared = None
-        self._picked_ports = []
+        self._picked_ports: list[int] = []
         if server_ports:
             self.server = server_ports
         else:

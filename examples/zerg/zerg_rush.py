@@ -22,7 +22,7 @@ class ZergRushBot(BotAI):
     async def on_start(self):
         self.client.game_step = 2
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         if iteration == 0:
             await self.chat_send("(glhf)")
 
@@ -38,11 +38,11 @@ class ZergRushBot(BotAI):
         hatch: Unit = self.townhalls[0]
 
         # Pick a target location
-        target: Point2 = self.enemy_structures.not_flying.random_or(self.enemy_start_locations[0]).position
+        target_pos: Point2 = self.enemy_structures.not_flying.random_or(self.enemy_start_locations[0]).position
 
         # Give all zerglings an attack command
         for zergling in self.units(UnitTypeId.ZERGLING):
-            zergling.attack(target)
+            zergling.attack(target=target_pos)
 
         # Inject hatchery if queen has more than 25 energy
         for queen in self.units(UnitTypeId.QUEEN):

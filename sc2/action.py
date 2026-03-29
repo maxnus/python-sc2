@@ -3,9 +3,7 @@ from __future__ import annotations
 from itertools import groupby
 from typing import TYPE_CHECKING
 
-# pyre-ignore[21]
 from s2clientprotocol import raw_pb2 as raw_pb
-
 from sc2.position import Point2
 from sc2.unit import Unit
 
@@ -14,7 +12,7 @@ if TYPE_CHECKING:
     from sc2.unit_command import UnitCommand
 
 
-def combine_actions(action_iter):
+def combine_actions(action_iter: list[UnitCommand]):
     """
     Example input:
     [
@@ -57,7 +55,6 @@ def combine_actions(action_iter):
             I imagine the same thing would happen to certain other abilities: Battlecruiser yamato on same target, queen transfuse on same target, ghost snipe on same target, all build commands with the same unit type and also all morphs (zergling to banelings)
             However, other abilities can and should be grouped, see constants.py 'COMBINEABLE_ABILITIES'
             """
-            u: UnitCommand
             if target is None:
                 for u in items:
                     cmd = raw_pb.ActionRawUnitCommand(
@@ -73,7 +70,6 @@ def combine_actions(action_iter):
                         target_world_space_pos=target.as_Point2D,
                     )
                     yield raw_pb.ActionRaw(unit_command=cmd)
-
             elif isinstance(target, Unit):
                 for u in items:
                     cmd = raw_pb.ActionRawUnitCommand(

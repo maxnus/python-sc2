@@ -15,7 +15,7 @@ OPPONENT_PLAYER_ID = 2
 class FightBot(BotAI):
     def __init__(self):
         super().__init__()
-        self.enemy_location: Point2 = None
+        self.enemy_location: Point2 | None = None
         self.fight_started = False
 
     async def on_start(self):
@@ -23,7 +23,7 @@ class FightBot(BotAI):
         await self.client.debug_show_map()
         await self.client.debug_control_enemy()
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         # Wait till control retrieved, destroy all starting units, recreate the world
         if iteration > 0 and self.enemy_units and not self.enemy_location:
             await self.reset_arena()

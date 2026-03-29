@@ -14,14 +14,41 @@ on:
       - develop
 
 env:
-  VERSION_NUMBER: "1.0.6"
-  LATEST_PYTHON_VERSION: "3.13"
+  VERSION_NUMBER: "1.0.7"
+  LATEST_PYTHON_VERSION: "3.14"
   LATEST_SC2_VERSION: "4.10"
-  EXPERIMENTAL_PYTHON_VERSION: "3.14"
+  EXPERIMENTAL_PYTHON_VERSION: "3.15"
 
 jobs:
+  download_sc2_maps:
+    name: Download and cache sc2 maps
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Cache sc2 maps
+        uses: actions/cache@v4
+        id: cache-sc2-maps
+        with:
+          path: |
+            dockerfiles/maps
+          key: ${{ runner.os }}-maps-${{ hashFiles('dockerfiles/maps/**') }}
+          restore-keys: |
+            ${{ runner.os }}-maps-
+
+      - name: Download sc2 maps
+        run: sh dockerfiles/download_maps.sh
+        if: steps.cache-sc2-maps.outputs.cache-hit != 'true'
+
   run_test_docker_image:
     name: Run test_docker_image.sh
+    needs: [download_sc2_maps]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -32,10 +59,19 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Enable experimental docker features
-        run: |
-          echo $'{\n    "experimental": true\n}' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker.service
+      - name: Cache sc2 maps
+        uses: actions/cache@v4
+        id: cache-sc2-maps
+        with:
+          path: |
+            dockerfiles/maps
+          key: ${{ runner.os }}-maps-${{ hashFiles('dockerfiles/maps/**') }}
+          restore-keys: |
+            ${{ runner.os }}-maps-
+
+      - name: Download sc2 maps
+        run: sh dockerfiles/download_maps.sh
+        if: steps.cache-sc2-maps.outputs.cache-hit != 'true'
 
       - name: Run shell script
         env:
@@ -46,6 +82,7 @@ jobs:
 
   run_test_new_python_version:
     name: Run test_new_python_candidate.sh
+    needs: [download_sc2_maps]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -56,10 +93,19 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Enable experimental docker features
-        run: |
-          echo $'{\n    "experimental": true\n}' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker.service
+      - name: Cache sc2 maps
+        uses: actions/cache@v4
+        id: cache-sc2-maps
+        with:
+          path: |
+            dockerfiles/maps
+          key: ${{ runner.os }}-maps-${{ hashFiles('dockerfiles/maps/**') }}
+          restore-keys: |
+            ${{ runner.os }}-maps-
+
+      - name: Download sc2 maps
+        run: sh dockerfiles/download_maps.sh
+        if: steps.cache-sc2-maps.outputs.cache-hit != 'true'
 
       - name: Run shell script
         continue-on-error: true
@@ -71,13 +117,14 @@ jobs:
 
   docker_build:
     name: Build docker image
+    needs: [download_sc2_maps]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         sc2-version: ["4.10"]
     env:
       IMAGE_NAME: burnysc2/python-sc2-docker:py_${{ matrix.python-version }}-sc2_${{ matrix.sc2-version }}
@@ -86,31 +133,37 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Cache sc2 maps
+        uses: actions/cache@v4
+        id: cache-sc2-maps
+        with:
+          path: |
+            dockerfiles/maps
+          key: ${{ runner.os }}-maps-${{ hashFiles('dockerfiles/maps/**') }}
+          restore-keys: |
+            ${{ runner.os }}-maps-
+
+      - name: Download sc2 maps
+        run: sh dockerfiles/download_maps.sh
+        if: steps.cache-sc2-maps.outputs.cache-hit != 'true'
+
       - name: Build docker image
-        run: docker build -t $IMAGE_NAME-v$VERSION_NUMBER $BUILD_ARGS - < dockerfiles/Dockerfile
+        run: docker build -f dockerfiles/Dockerfile -t $IMAGE_NAME-v$VERSION_NUMBER $BUILD_ARGS .
 
-      - name: Enable experimental docker features
-        run: |
-          echo $'{\n    "experimental": true\n}' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker.service
-
-      - name: Build squashed image
-        run: docker build -t $IMAGE_NAME-v$VERSION_NUMBER-squashed --squash $BUILD_ARGS - < dockerfiles/Dockerfile
-
-      - name: Run test bots on squashed image
-        if: matrix.python-version != '3.7'
+      - name: Run test bots on image
         run: |
           echo "Start container, override the default entrypoint"
           docker run -i -d \
             --name test_container \
             --env 'PYTHONPATH=/root/python-sc2/' \
             --entrypoint /bin/bash \
-            $IMAGE_NAME-v$VERSION_NUMBER-squashed
+            $IMAGE_NAME-v$VERSION_NUMBER
           echo "Install python-sc2"
           docker exec -i test_container mkdir -p /root/python-sc2
           docker cp pyproject.toml test_container:/root/python-sc2/
           docker cp uv.lock test_container:/root/python-sc2/
           docker cp sc2 test_container:/root/python-sc2/sc2
+          docker cp s2clientprotocol test_container:/root/python-sc2/s2clientprotocol
           docker cp test test_container:/root/python-sc2/test
           docker cp examples test_container:/root/python-sc2/examples
           docker exec -i test_container bash -c "pip install uv \
@@ -120,7 +173,7 @@ jobs:
           docker exec -i test_container bash -c "cd python-sc2 && uv run python test/run_example_bots_vs_computer.py"
 
       - name: Login to DockerHub
-        if: github.ref == 'refs/heads/develop'
+        if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -130,12 +183,8 @@ jobs:
         if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
         run: docker push $IMAGE_NAME-v$VERSION_NUMBER
 
-      - name: Upload squashed docker image
-        if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-        run: docker push $IMAGE_NAME-v$VERSION_NUMBER-squashed
-
-      - name: Upload squashed docker image as latest tag
+      - name: Upload docker image as latest tag
         if: github.ref == 'refs/heads/develop' && github.event_name == 'push' && matrix.python-version == env.LATEST_PYTHON_VERSION && matrix.sc2-version == env.LATEST_SC2_VERSION
         run: |
-          docker tag $IMAGE_NAME-v$VERSION_NUMBER-squashed burnysc2/python-sc2-docker:latest
+          docker tag $IMAGE_NAME-v$VERSION_NUMBER burnysc2/python-sc2-docker:latest
           docker push burnysc2/python-sc2-docker:latest

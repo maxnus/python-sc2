@@ -29,7 +29,7 @@ class BCRushBot(BotAI):
 
         return self.mineral_field.random.position, False
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         ccs: Units = self.townhalls
         # If we no longer have townhalls, attack with all workers
         if not ccs:
@@ -85,7 +85,7 @@ class BCRushBot(BotAI):
                         if self.gas_buildings.filter(lambda unit: unit.distance_to(vg) < 1):
                             break
 
-                        worker: Unit = self.select_build_worker(vg.position)
+                        worker: Unit | None = self.select_build_worker(vg.position)
                         if worker is None:
                             break
 
@@ -172,9 +172,9 @@ class BCRushBot(BotAI):
         # Saturate refineries
         for refinery in self.gas_buildings:
             if refinery.assigned_harvesters < refinery.ideal_harvesters:
-                worker: Units = self.workers.closer_than(10, refinery)
-                if worker:
-                    worker.random.gather(refinery)
+                workers: Units = self.workers.closer_than(10, refinery)
+                if workers:
+                    workers.random.gather(refinery)
 
         # Send workers back to mine if they are idle
         for scv in self.workers.idle:

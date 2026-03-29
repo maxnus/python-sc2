@@ -16,7 +16,7 @@ class ExpandEverywhere(BotAI):
         self.client.game_step = 50
         await self.client.debug_show_map()
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         # Build overlords if about to be supply blocked
         if (
             self.supply_left < 2

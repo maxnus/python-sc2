@@ -259,6 +259,10 @@ class Unit:
         return 0
 
     @cached_property
+    def is_melee(self) -> bool:
+        return 0 < self.ground_range <= 1.0
+
+    @cached_property
     def can_attack_air(self) -> bool:
         """Checks if the unit can air attack at all. Does not include upgrades."""
         if self.type_id == UNIT_BATTLECRUISER:

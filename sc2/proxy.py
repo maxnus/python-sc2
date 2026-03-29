@@ -15,7 +15,6 @@ from loguru import logger
 
 # pyre-fixme[21]
 from s2clientprotocol import sc2api_pb2 as sc_pb
-
 from sc2.controller import Controller
 from sc2.data import Result, Status
 from sc2.player import BotProcess

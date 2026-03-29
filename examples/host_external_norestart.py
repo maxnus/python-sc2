@@ -1,13 +1,13 @@
-import sc2
 from examples.zerg.zerg_rush import ZergRushBot
 from sc2 import maps
 from sc2.data import Race
 from sc2.main import _host_game_iter
 from sc2.player import Bot
+from sc2.portconfig import Portconfig
 
 
 def main():
-    portconfig = sc2.portconfig.Portconfig()
+    portconfig: Portconfig = Portconfig()
     print(portconfig.as_json)
 
     player_config = [Bot(Race.Zerg, ZergRushBot()), Bot(Race.Zerg, None)]

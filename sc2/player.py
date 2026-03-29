@@ -4,6 +4,7 @@ from __future__ import annotations
 from abc import ABC
 from pathlib import Path
 
+from s2clientprotocol import sc2api_pb2
 from sc2.bot_ai import BotAI
 from sc2.data import AIBuild, Difficulty, PlayerType, Race
 
@@ -12,10 +13,10 @@ class AbstractPlayer(ABC):
     def __init__(
         self,
         p_type: PlayerType,
-        race: Race = None,
+        race: Race | None = None,
         name: str | None = None,
-        difficulty=None,
-        ai_build=None,
+        difficulty: Difficulty | None = None,
+        ai_build: AIBuild | None = None,
         fullscreen: bool = False,
     ) -> None:
         assert isinstance(p_type, PlayerType), f"p_type is of type {type(p_type)}"
@@ -50,7 +51,7 @@ class AbstractPlayer(ABC):
 
 
 class Human(AbstractPlayer):
-    def __init__(self, race, name: str | None = None, fullscreen: bool = False) -> None:
+    def __init__(self, race: Race, name: str | None = None, fullscreen: bool = False) -> None:
         super().__init__(PlayerType.Participant, race, name=name, fullscreen=fullscreen)
 
     def __str__(self) -> str:
@@ -60,7 +61,7 @@ class Human(AbstractPlayer):
 
 
 class Bot(AbstractPlayer):
-    def __init__(self, race, ai, name: str | None = None, fullscreen: bool = False) -> None:
+    def __init__(self, race: Race, ai: BotAI, name: str | None = None, fullscreen: bool = False) -> None:
         """
         AI can be None if this player object is just used to inform the
         server about player types.
@@ -76,7 +77,9 @@ class Bot(AbstractPlayer):
 
 
 class Computer(AbstractPlayer):
-    def __init__(self, race, difficulty=Difficulty.Easy, ai_build=AIBuild.RandomBuild) -> None:
+    def __init__(
+        self, race: Race, difficulty: Difficulty = Difficulty.Easy, ai_build: AIBuild = AIBuild.RandomBuild
+    ) -> None:
         super().__init__(PlayerType.Computer, race, difficulty=difficulty, ai_build=ai_build)
 
     def __str__(self) -> str:
@@ -95,19 +98,19 @@ class Player(AbstractPlayer):
     def __init__(
         self,
         player_id: int,
-        p_type,
-        requested_race,
-        difficulty=None,
-        actual_race=None,
+        p_type: PlayerType,
+        requested_race: Race,
+        difficulty: Difficulty | None = None,
+        actual_race: Race | None = None,
         name: str | None = None,
-        ai_build=None,
+        ai_build: AIBuild | None = None,
     ) -> None:
         super().__init__(p_type, requested_race, difficulty=difficulty, name=name, ai_build=ai_build)
         self.id: int = player_id
-        self.actual_race: Race = actual_race
+        self.actual_race: Race | None = actual_race
 
     @classmethod
-    def from_proto(cls, proto) -> Player:
+    def from_proto(cls, proto: sc2api_pb2.PlayerInfo) -> Player:
         if PlayerType(proto.type) == PlayerType.Observer:
             return cls(proto.player_id, PlayerType(proto.type), None, None, None)
         return cls(
@@ -168,7 +171,9 @@ class BotProcess(AbstractPlayer):
             return f"Bot {self.name}({self.race.name} from {self.launch_list})"
         return f"Bot({self.race.name} from {self.launch_list})"
 
-    def cmd_line(self, sc2port: int | str, matchport: int | str, hostaddress: str, realtime: bool = False) -> list[str]:
+    def cmd_line(
+        self, sc2port: int | str, matchport: int | str | None, hostaddress: str, realtime: bool = False
+    ) -> list[str]:
         """
 
         :param sc2port: the port that the launched sc2 instance listens to

@@ -19,7 +19,7 @@ class Hydralisk(BotAI):
             return random.choice(self.enemy_structures).position
         return self.enemy_start_locations[0]
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         larvae: Units = self.larva
         forces: Units = self.units.of_type({UnitTypeId.ZERGLING, UnitTypeId.HYDRALISK})
 

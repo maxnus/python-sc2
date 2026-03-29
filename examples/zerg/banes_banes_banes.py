@@ -23,7 +23,7 @@ class BanesBanesBanes(BotAI):
             return random.choice(self.enemy_structures).position
         return self.enemy_start_locations[0]
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         larvae: Units = self.larva
         lings: Units = self.units(UnitTypeId.ZERGLING)
         # Send all idle banes to enemy

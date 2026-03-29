@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Hashable
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
     from sc2.bot_ai import BotAI
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-class CacheDict(dict):
+class CacheDict(dict[Hashable, Any]):
     def retrieve_and_set(self, key: Hashable, func: Callable[[], T]) -> T:
         """Either return the value at a certain key,
         or set the return value of a function to that key, then return that value."""
@@ -29,7 +29,7 @@ class property_cache_once_per_frame(property):  # noqa: N801
     Copied and modified from https://tedboy.github.io/flask/_modules/werkzeug/utils.html#cached_property
     #"""
 
-    def __init__(self, func: Callable[[BotAI], T], name=None) -> None:
+    def __init__(self, func: Callable[[BotAI], T], name: str | None = None) -> None:
         self.__name__ = name or func.__name__
         self.__frame__ = f"__frame__{self.__name__}"
         self.func = func

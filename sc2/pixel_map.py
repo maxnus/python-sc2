@@ -5,11 +5,12 @@ from pathlib import Path
 
 import numpy as np
 
+from s2clientprotocol.common_pb2 import ImageData
 from sc2.position import Point2
 
 
 class PixelMap:
-    def __init__(self, proto, in_bits: bool = False) -> None:
+    def __init__(self, proto: ImageData, in_bits: bool = False) -> None:
         """
         :param proto:
         :param in_bits:

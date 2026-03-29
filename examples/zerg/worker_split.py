@@ -30,7 +30,7 @@ class WorkerSplitBot(BotAI):
     async def on_start(self):
         """This function is run after the expansion locations and ramps are calculated."""
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         if iteration % 10 == 0:
             await asyncio.sleep(3)
         # In realtime=False, this should print "8*x" and "x" if

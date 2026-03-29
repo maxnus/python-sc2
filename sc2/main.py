@@ -10,19 +10,21 @@ from contextlib import suppress
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import mpyq
 import portpicker
 from aiohttp import ClientSession, ClientWebSocketResponse
 from loguru import logger
-from s2clientprotocol import sc2api_pb2 as sc_pb
 
+from s2clientprotocol import sc2api_pb2 as sc_pb
 from sc2.bot_ai import BotAI
 from sc2.client import Client
 from sc2.controller import Controller
 from sc2.data import CreateGameError, Result, Status
 from sc2.game_state import GameState
 from sc2.maps import Map
+from sc2.observer_ai import ObserverAI
 from sc2.player import AbstractPlayer, Bot, BotProcess, Human
 from sc2.portconfig import Portconfig
 from sc2.protocol import ConnectionAlreadyClosedError, ProtocolError
@@ -71,7 +73,7 @@ class GameMatch:
         return sum(player.needs_sc2 for player in self.players)
 
     @property
-    def host_game_kwargs(self) -> dict:
+    def host_game_kwargs(self) -> dict[str, Any]:
         return {
             "map_settings": self.map_sc2,
             "players": self.players,
@@ -203,7 +205,12 @@ async def _play_game_ai(
 
 
 async def _play_game(
-    player: AbstractPlayer, client: Client, realtime, portconfig, game_time_limit=None, rgb_render_config=None
+    player: AbstractPlayer,
+    client: Client,
+    realtime: bool,
+    portconfig: Portconfig,
+    game_time_limit: int | None = None,
+    rgb_render_config: dict[str, Any] | None = None,
 ) -> Result:
     assert isinstance(realtime, bool), repr(realtime)
 
@@ -225,7 +232,7 @@ async def _play_game(
     return result
 
 
-async def _play_replay(client, ai, realtime: bool = False, player_id: int = 0):
+async def _play_replay(client: Client, ai, realtime: bool = False, player_id: int = 0):
     ai._initialize_variables()
 
     game_data = await client.get_game_data()
@@ -328,16 +335,16 @@ async def _setup_host_game(
 
 
 async def _host_game(
-    map_settings,
-    players,
+    map_settings: Map,
+    players: list[AbstractPlayer],
     realtime: bool = False,
-    portconfig=None,
-    save_replay_as=None,
-    game_time_limit=None,
-    rgb_render_config=None,
-    random_seed=None,
-    sc2_version=None,
-    disable_fog=None,
+    portconfig: Portconfig | None = None,
+    save_replay_as: str | None = None,
+    game_time_limit: int | None = None,
+    rgb_render_config: dict[str, Any] | None = None,
+    random_seed: int | None = None,
+    sc2_version: str | None = None,
+    disable_fog: bool = False,
 ):
     assert players, "Can't create a game without players"
 
@@ -410,19 +417,19 @@ def _host_game_iter(*args, **kwargs):
 
 
 async def _join_game(
-    players,
-    realtime,
-    portconfig,
-    save_replay_as=None,
-    game_time_limit=None,
-    sc2_version=None,
+    players: list[AbstractPlayer],
+    realtime: bool = False,
+    portconfig: Portconfig | None = None,
+    save_replay_as: str | None = None,
+    game_time_limit: int | None = None,
+    sc2_version: str | None = None,
 ):
     async with SC2Process(fullscreen=players[1].fullscreen, sc2_version=sc2_version) as server:
         await server.ping()
 
         client = Client(server._ws)
         # Bot can decide if it wants to launch with 'raw_affects_selection=True'
-        if not isinstance(players[1], Human) and getattr(players[1].ai, "raw_affects_selection", None) is not None:
+        if isinstance(players[1], Bot) and getattr(players[1].ai, "raw_affects_selection", None) is not None:
             client.raw_affects_selection = players[1].ai.raw_affects_selection
 
         result = await _play_game(players[1], client, realtime, portconfig, game_time_limit)
@@ -442,7 +449,9 @@ async def _setup_replay(server, replay_path, realtime, observed_id):
     return Client(server._ws)
 
 
-async def _host_replay(replay_path, ai, realtime, _portconfig, base_build, data_version, observed_id):
+async def _host_replay(
+    replay_path, ai: ObserverAI, realtime: bool, _portconfig: Portconfig, base_build, data_version, observed_id
+):
     async with SC2Process(fullscreen=False, base_build=base_build, data_hash=data_version) as server:
         client = await _setup_replay(server, replay_path, realtime, observed_id)
         result = await _play_replay(client, ai, realtime)
@@ -461,21 +470,47 @@ def get_replay_version(replay_path: str | Path) -> tuple[str, str]:
 
 
 # TODO Deprecate run_game function in favor of run_multiple_games
-def run_game(map_settings, players, **kwargs) -> Result | list[Result | None]:
+def run_game(
+    map_settings: Map,
+    players: list[AbstractPlayer],
+    realtime: bool,
+    portconfig: Portconfig | None = None,
+    save_replay_as: str | None = None,
+    game_time_limit: int | None = None,
+    rgb_render_config: dict[str, Any] | None = None,
+    random_seed: int | None = None,
+    sc2_version: str | None = None,
+    disable_fog: bool = False,
+) -> Result | list[Result | None]:
     """
     Returns a single Result enum if the game was against the built-in computer.
     Returns a list of two Result enums if the game was "Human vs Bot" or "Bot vs Bot".
     """
     if sum(isinstance(p, (Human, Bot)) for p in players) > 1:
-        host_only_args = ["save_replay_as", "rgb_render_config", "random_seed", "disable_fog"]
-        join_kwargs = {k: v for k, v in kwargs.items() if k not in host_only_args}
-
         portconfig = Portconfig()
 
         async def run_host_and_join():
             return await asyncio.gather(
-                _host_game(map_settings, players, **kwargs, portconfig=portconfig),
-                _join_game(players, **join_kwargs, portconfig=portconfig),
+                _host_game(
+                    map_settings,
+                    players,
+                    realtime=realtime,
+                    portconfig=portconfig,
+                    save_replay_as=save_replay_as,
+                    game_time_limit=game_time_limit,
+                    rgb_render_config=rgb_render_config,
+                    random_seed=random_seed,
+                    sc2_version=sc2_version,
+                    disable_fog=disable_fog,
+                ),
+                _join_game(
+                    players,
+                    realtime=realtime,
+                    portconfig=portconfig,
+                    save_replay_as=save_replay_as,
+                    game_time_limit=game_time_limit,
+                    sc2_version=sc2_version,
+                ),
                 return_exceptions=True,
             )
 
@@ -483,12 +518,25 @@ def run_game(map_settings, players, **kwargs) -> Result | list[Result | None]:
         assert isinstance(result, list)
         assert all(isinstance(r, Result) for r in result)
     else:
-        result: Result = asyncio.run(_host_game(map_settings, players, **kwargs))
+        result: Result = asyncio.run(
+            _host_game(
+                map_settings,
+                players,
+                realtime=realtime,
+                portconfig=portconfig,
+                save_replay_as=save_replay_as,
+                game_time_limit=game_time_limit,
+                rgb_render_config=rgb_render_config,
+                random_seed=random_seed,
+                sc2_version=sc2_version,
+                disable_fog=disable_fog,
+            )
+        )
         assert isinstance(result, Result)
     return result
 
 
-def run_replay(ai, replay_path: Path | str, realtime: bool = False, observed_id: int = 0):
+def run_replay(ai: ObserverAI, replay_path: Path | str, realtime: bool = False, observed_id: int = 0):
     portconfig = Portconfig()
     assert Path(replay_path).is_file(), f"Replay does not exist at the given path: {replay_path}"
     assert Path(replay_path).is_absolute(), (
@@ -725,7 +773,7 @@ async def a_run_multiple_games_nokill(matches: list[GameMatch]) -> list[dict[Abs
 
     # Start the matches
     results = []
-    controllers = []
+    controllers: list[Controller] = []
     for m in matches:
         logger.info(f"Starting match {1 + len(results)} / {len(matches)}: {m}")
         result = None

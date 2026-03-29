@@ -1,14 +1,19 @@
+from __future__ import annotations
+
+from s2clientprotocol import score_pb2
+
+
 class ScoreDetails:
     """Accessable in self.state.score during step function
     For more information, see https://github.com/Blizzard/s2client-proto/blob/master/s2clientprotocol/score.proto
     """
 
-    def __init__(self, proto) -> None:
+    def __init__(self, proto: score_pb2.Score) -> None:
         self._data = proto
         self._proto = proto.score_details
 
     @property
-    def summary(self):
+    def summary(self) -> list[list[int | float]]:
         """
         TODO this is super ugly, how can we improve this summary?
         Print summary to file with:

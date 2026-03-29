@@ -13,7 +13,7 @@ class ProxyRaxBot(BotAI):
     async def on_start(self):
         self.client.game_step = 2
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         # If we don't have a townhall anymore, send all units to attack
         ccs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
         if not ccs:

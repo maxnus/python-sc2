@@ -4,7 +4,7 @@ Ideally this script should be done with a bot that terminates on its own after c
 
 Usage:
 cd into python-sc2/ directory
-docker build -t test_image -f test/Dockerfile .
+docker build -f test/Dockerfile -t test_image .
 docker run test_image -c "python test/travis_test_script.py test/autotest_bot.py"
 
 Or if you want to run from windows:

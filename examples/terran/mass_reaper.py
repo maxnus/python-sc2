@@ -25,7 +25,7 @@ class MassReaperBot(BotAI):
         # Select distance calculation method 0, which is the pure python distance calculation without caching or indexing, using math.hypot(), for more info see bot_ai_internal.py _distances_override_functions() function
         self.distance_calculation_method = 3
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         # Benchmark and print duration time of the on_step method based on "self.distance_calculation_method" value
         # logger.info(self.time_formatted, self.supply_used, self.step_time[1])
         """
@@ -45,7 +45,9 @@ class MassReaperBot(BotAI):
             # If workers were found
             if workers:
                 worker: Unit = workers.furthest_to(workers.center)
-                location: Point2 = await self.find_placement(UnitTypeId.SUPPLYDEPOT, worker.position, placement_step=3)
+                location: Point2 | None = await self.find_placement(
+                    UnitTypeId.SUPPLYDEPOT, worker.position, placement_step=3
+                )
                 # If a placement location was found
                 if location:
                     # Order worker to build exactly on that location
@@ -72,13 +74,13 @@ class MassReaperBot(BotAI):
             and self.can_afford(UnitTypeId.COMMANDCENTER)
         ):
             # get_next_expansion returns the position of the next possible expansion location where you can place a command center
-            location: Point2 = await self.get_next_expansion()
+            location: Point2 | None = await self.get_next_expansion()
             if location:
                 # Now we "select" (or choose) the nearest worker to that found location
-                worker: Unit = self.select_build_worker(location)
-                if worker and self.can_afford(UnitTypeId.COMMANDCENTER):
+                worker2: Unit | None = self.select_build_worker(location)
+                if worker2 and self.can_afford(UnitTypeId.COMMANDCENTER):
                     # The worker will be commanded to build the command center
-                    worker.build(UnitTypeId.COMMANDCENTER, location)
+                    worker2.build(UnitTypeId.COMMANDCENTER, location)
 
         # Build up to 4 barracks if we can afford them
         # Check if we have a supply depot (tech requirement) before trying to make barracks
@@ -97,7 +99,7 @@ class MassReaperBot(BotAI):
             ):  # need to check if townhalls.amount > 0 because placement is based on townhall location
                 worker: Unit = workers.furthest_to(workers.center)
                 # I chose placement_step 4 here so there will be gaps between barracks hopefully
-                location: Point2 = await self.find_placement(
+                location: Point2 | None = await self.find_placement(
                     UnitTypeId.BARRACKS, self.townhalls.random.position, placement_step=4
                 )
                 if location:
@@ -168,7 +170,7 @@ class MassReaperBot(BotAI):
                 retreat_points: set[Point2] = {x for x in retreat_points if self.in_pathing_grid(x)}
                 if retreat_points:
                     closest_enemy: Unit = enemy_threats_close.closest_to(r)
-                    retreat_point: Unit = closest_enemy.position.furthest(retreat_points)
+                    retreat_point: Point2 = closest_enemy.position.furthest(retreat_points)
                     r.move(retreat_point)
                     continue  # Continue for loop, dont execute any of the following
 
@@ -259,13 +261,13 @@ class MassReaperBot(BotAI):
     # Stolen and modified from position.py
 
     @staticmethod
-    def neighbors4(position, distance=1) -> set[Point2]:
+    def neighbors4(position: Point2, distance: float = 1) -> set[Point2]:
         p = position
         d = distance
         return {Point2((p.x - d, p.y)), Point2((p.x + d, p.y)), Point2((p.x, p.y - d)), Point2((p.x, p.y + d))}
 
     # Stolen and modified from position.py
-    def neighbors8(self, position, distance=1) -> set[Point2]:
+    def neighbors8(self, position: Point2, distance: float = 1) -> set[Point2]:
         p = position
         d = distance
         return self.neighbors4(position, distance) | {

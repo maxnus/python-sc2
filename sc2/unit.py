@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
+from s2clientprotocol import raw_pb2
 from sc2.cache import CacheDict
 from sc2.constants import (
     CAN_BE_ATTACKED,
@@ -57,11 +58,12 @@ from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
-from sc2.position import Point2, Point3
+from sc2.position import HasPosition2D, Point2, Point3, _PointLike
 from sc2.unit_command import UnitCommand
 
 if TYPE_CHECKING:
     from sc2.bot_ai import BotAI
+    from sc2.bot_ai_internal import BotAIInternal
     from sc2.game_data import AbilityData, UnitTypeData
 
 
@@ -71,7 +73,7 @@ class RallyTarget:
     tag: int | None = None
 
     @classmethod
-    def from_proto(cls, proto: Any) -> RallyTarget:
+    def from_proto(cls, proto: raw_pb2.RallyTarget) -> RallyTarget:
         return cls(
             Point2.from_proto(proto.point),
             proto.tag if proto.HasField("tag") else None,
@@ -85,7 +87,7 @@ class UnitOrder:
     progress: float = 0
 
     @classmethod
-    def from_proto(cls, proto: Any, bot_object: BotAI) -> UnitOrder:
+    def from_proto(cls, proto: raw_pb2.UnitOrder, bot_object: BotAI) -> UnitOrder:
         target: int | Point2 | None = proto.target_unit_tag
         if proto.HasField("target_world_space_pos"):
             target = Point2.from_proto(proto.target_world_space_pos)
@@ -101,13 +103,13 @@ class UnitOrder:
         return f"UnitOrder({self.ability}, {self.target}, {self.progress})"
 
 
-class Unit:
+class Unit(HasPosition2D):
     class_cache = CacheDict()
 
     def __init__(
         self,
-        proto_data,
-        bot_object: BotAI,
+        proto_data: raw_pb2.Unit,
+        bot_object: BotAI | BotAIInternal,
         distance_calculation_index: int = -1,
         base_build: int = -1,
     ) -> None:
@@ -118,7 +120,7 @@ class Unit:
         :param base_build:
         """
         self._proto = proto_data
-        self._bot_object: BotAI = bot_object
+        self._bot_object = bot_object
         self.game_loop: int = bot_object.state.game_loop
         self.base_build = base_build
         # Index used in the 2D numpy array to access the 2D distance between two units
@@ -162,37 +164,37 @@ class Unit:
     @property
     def is_structure(self) -> bool:
         """Checks if the unit is a structure."""
-        return IS_STRUCTURE in self._type_data.attributes
+        return IS_STRUCTURE in self._type_data._proto.attributes
 
     @property
     def is_light(self) -> bool:
         """Checks if the unit has the 'light' attribute."""
-        return IS_LIGHT in self._type_data.attributes
+        return IS_LIGHT in self._type_data._proto.attributes
 
     @property
     def is_armored(self) -> bool:
         """Checks if the unit has the 'armored' attribute."""
-        return IS_ARMORED in self._type_data.attributes
+        return IS_ARMORED in self._type_data._proto.attributes
 
     @property
     def is_biological(self) -> bool:
         """Checks if the unit has the 'biological' attribute."""
-        return IS_BIOLOGICAL in self._type_data.attributes
+        return IS_BIOLOGICAL in self._type_data._proto.attributes
 
     @property
     def is_mechanical(self) -> bool:
         """Checks if the unit has the 'mechanical' attribute."""
-        return IS_MECHANICAL in self._type_data.attributes
+        return IS_MECHANICAL in self._type_data._proto.attributes
 
     @property
     def is_massive(self) -> bool:
         """Checks if the unit has the 'massive' attribute."""
-        return IS_MASSIVE in self._type_data.attributes
+        return IS_MASSIVE in self._type_data._proto.attributes
 
     @property
     def is_psionic(self) -> bool:
         """Checks if the unit has the 'psionic' attribute."""
-        return IS_PSIONIC in self._type_data.attributes
+        return IS_PSIONIC in self._type_data._proto.attributes
 
     @cached_property
     def tech_alias(self) -> list[UnitTypeId] | None:
@@ -527,7 +529,7 @@ class Unit:
         return self._proto.pos.x, self._proto.pos.y
 
     @cached_property
-    def position(self) -> Point2:
+    def position(self) -> Point2:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Returns the 2d position of the unit."""
         return Point2.from_proto(self._proto.pos)
 
@@ -536,7 +538,7 @@ class Unit:
         """Returns the 3d position of the unit."""
         return Point3.from_proto(self._proto.pos)
 
-    def distance_to(self, p: Unit | Point2) -> float:
+    def distance_to(self, p: Unit | _PointLike) -> float:
         """Using the 2d distance between self and p.
         To calculate the 3d distance, use unit.position3d.distance_to(p)
 
@@ -546,7 +548,7 @@ class Unit:
             return self._bot_object._distance_squared_unit_to_unit(self, p) ** 0.5
         return self._bot_object.distance_math_hypot(self.position_tuple, p)
 
-    def distance_to_squared(self, p: Unit | Point2) -> float:
+    def distance_to_squared(self, p: Unit | _PointLike) -> float:
         """Using the 2d distance squared between self and p. Slightly faster than distance_to, so when filtering a lot of units, this function is recommended to be used.
         To calculate the 3d distance, use unit.position3d.distance_to(p)
 
@@ -705,7 +707,7 @@ class Unit:
             # TODO: hardcode hellbats when they have blueflame or attack upgrades
             for bonus in weapon.damage_bonus:
                 # More about damage bonus https://github.com/Blizzard/s2client-proto/blob/b73eb59ac7f2c52b2ca585db4399f2d3202e102a/s2clientprotocol/data.proto#L55
-                if bonus.attribute in target._type_data.attributes:
+                if bonus.attribute in target._type_data._proto.attributes:
                     bonus_damage_per_upgrade = (
                         0
                         if not self.attack_upgrade_level
@@ -1034,7 +1036,7 @@ class Unit:
         from the first order, returns None if the unit is idle"""
         if self.orders:
             target = self.orders[0].target
-            if isinstance(target, int):
+            if target is None or isinstance(target, int):
                 return target
             return Point2.from_proto(target)
         return None

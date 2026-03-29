@@ -19,7 +19,7 @@ class RampWallBot(BotAI):
     def __init__(self):
         self.unit_command_uses_self_do = False
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         ccs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
         if not ccs:
             return
@@ -70,11 +70,11 @@ class RampWallBot(BotAI):
         # Draw if two selected units are facing each other - green if this guy is facing the other, red if he is not
         self.draw_facing_units()
 
-        depot_placement_positions: frozenset[Point2] = self.main_base_ramp.corner_depots
+        depot_placement_positions: set[Point2] = self.main_base_ramp.corner_depots
         # Uncomment the following if you want to build 3 supply depots in the wall instead of a barracks in the middle + 2 depots in the corner
         # depot_placement_positions = self.main_base_ramp.corner_depots | {self.main_base_ramp.depot_in_middle}
 
-        barracks_placement_position: Point2 = self.main_base_ramp.barracks_correct_placement
+        barracks_placement_position: Point2 | None = self.main_base_ramp.barracks_correct_placement
         # If you prefer to have the barracks in the middle without room for addons, use the following instead
         # barracks_placement_position = self.main_base_ramp.barracks_in_middle
 

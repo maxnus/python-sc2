@@ -1187,7 +1187,7 @@ class BotAI(BotAIInternal):
         assert isinstance(message, str), f"{message} is not a string"
         await self.client.chat_send(message, team_only)
 
-    def in_map_bounds(self, pos: Point2 | tuple | list) -> bool:
+    def in_map_bounds(self, pos: Point2 | tuple[float, float] | list[float]) -> bool:
         """Tests if a 2 dimensional point is within the map boundaries of the pixelmaps.
 
         :param pos:"""

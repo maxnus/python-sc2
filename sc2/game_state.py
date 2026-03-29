@@ -7,6 +7,7 @@ from itertools import chain
 
 from loguru import logger
 
+from s2clientprotocol import raw_pb2, sc2api_pb2
 from sc2.constants import IS_ENEMY, IS_MINE, FakeEffectID, FakeEffectRadii
 from sc2.data import Alliance, DisplayType
 from sc2.ids.ability_id import AbilityId
@@ -25,7 +26,7 @@ except ImportError:
 
 
 class Blip:
-    def __init__(self, proto) -> None:
+    def __init__(self, proto: raw_pb2.Unit) -> None:
         """
         :param proto:
         """
@@ -82,7 +83,7 @@ class Common:
         "larva_count",
     ]
 
-    def __init__(self, proto) -> None:
+    def __init__(self, proto: sc2api_pb2.PlayerCommon) -> None:
         self._proto = proto
 
     def __getattr__(self, attr) -> int:
@@ -91,7 +92,7 @@ class Common:
 
 
 class EffectData:
-    def __init__(self, proto, fake: bool = False) -> None:
+    def __init__(self, proto: raw_pb2.Effect | raw_pb2.Unit, fake: bool = False) -> None:
         """
         :param proto:
         :param fake:
@@ -101,20 +102,20 @@ class EffectData:
 
     @property
     def id(self) -> EffectId | str:
-        if self.fake:
+        if isinstance(self._proto, raw_pb2.Unit):
             # Returns the string from constants.py, e.g. "KD8CHARGE"
             return FakeEffectID[self._proto.unit_type]
         return EffectId(self._proto.effect_id)
 
     @property
     def positions(self) -> set[Point2]:
-        if self.fake:
+        if isinstance(self._proto, raw_pb2.Unit):
             return {Point2.from_proto(self._proto.pos)}
         return {Point2.from_proto(p) for p in self._proto.pos}
 
     @property
     def alliance(self) -> Alliance:
-        return self._proto.alliance
+        return Alliance(self._proto.alliance)
 
     @property
     def is_mine(self) -> bool:
@@ -191,7 +192,11 @@ class ActionError(AbilityLookupTemplateClass):
 
 
 class GameState:
-    def __init__(self, response_observation, previous_observation=None) -> None:
+    def __init__(
+        self,
+        response_observation: sc2api_pb2.ResponseObservation,
+        previous_observation: sc2api_pb2.ResponseObservation | None = None,
+    ) -> None:
         """
         :param response_observation:
         :param previous_observation:
@@ -252,7 +257,7 @@ class GameState:
         """
         Game alerts, see https://github.com/Blizzard/s2client-proto/blob/01ab351e21c786648e4c6693d4aad023a176d45c/s2clientprotocol/sc2api.proto#L683-L706
         """
-        if self.previous_observation:
+        if self.previous_observation is not None:
             return list(chain(self.previous_observation.observation.alerts, self.observation.alerts))
         return self.observation.alerts
 
@@ -265,7 +270,7 @@ class GameState:
         Each action is converted into Python dataclasses: ActionRawUnitCommand, ActionRawToggleAutocast, ActionRawCameraMove
         """
         previous_frame_actions = self.previous_observation.actions if self.previous_observation else []
-        actions = []
+        actions: list[ActionRawUnitCommand | ActionRawToggleAutocast | ActionRawCameraMove] = []
         for action in chain(previous_frame_actions, self.response_observation.actions):
             action_raw = action.action_raw
             game_loop = action.game_loop

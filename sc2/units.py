@@ -6,6 +6,7 @@ from collections.abc import Callable, Generator, Iterable
 from itertools import chain
 from typing import TYPE_CHECKING, Any
 
+from s2clientprotocol import raw_pb2
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
 from sc2.unit import Unit
@@ -14,11 +15,11 @@ if TYPE_CHECKING:
     from sc2.bot_ai import BotAI
 
 
-class Units(list):
+class Units(list[Unit]):
     """A collection of Unit objects. Makes it easy to select units by selectors."""
 
     @classmethod
-    def from_proto(cls, units, bot_object: BotAI) -> Units:
+    def from_proto(cls, units: list[raw_pb2.Unit], bot_object: BotAI) -> Units:
         return cls((Unit(raw_unit, bot_object=bot_object) for raw_unit in units), bot_object)
 
     def __init__(self, units: Iterable[Unit], bot_object: BotAI) -> None:

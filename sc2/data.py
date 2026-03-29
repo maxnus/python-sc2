@@ -1,23 +1,18 @@
 # pyre-ignore-all-errors[16, 19]
 """For the list of enums, see here
 
-https://github.com/Blizzard/s2client-api/blob/d9ba0a33d6ce9d233c2a4ee988360c188fbe9dbf/include/sc2api/sc2_gametypes.h
-https://github.com/Blizzard/s2client-api/blob/d9ba0a33d6ce9d233c2a4ee988360c188fbe9dbf/include/sc2api/sc2_action.h
-https://github.com/Blizzard/s2client-api/blob/d9ba0a33d6ce9d233c2a4ee988360c188fbe9dbf/include/sc2api/sc2_unit.h
-https://github.com/Blizzard/s2client-api/blob/d9ba0a33d6ce9d233c2a4ee988360c188fbe9dbf/include/sc2api/sc2_data.h
+https://github.com/Blizzard/s2client-proto/tree/bff45dae1fc685e6acbaae084670afb7d1c0832c/s2clientprotocol
 """
 
 from __future__ import annotations
 
 import enum
 
-# pyre-ignore[21]
 from s2clientprotocol import common_pb2 as common_pb
 from s2clientprotocol import data_pb2 as data_pb
 from s2clientprotocol import error_pb2 as error_pb
 from s2clientprotocol import raw_pb2 as raw_pb
 from s2clientprotocol import sc2api_pb2 as sc_pb
-
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId
 

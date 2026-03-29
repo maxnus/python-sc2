@@ -28,7 +28,7 @@ class CyclonePush(BotAI):
         # Pick a random mineral field on the map
         return self.mineral_field.random.position
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         CCs: Units = self.townhalls(UnitTypeId.COMMANDCENTER)
         # If no command center exists, attack-move with all workers and cyclones
         if not CCs:
@@ -87,7 +87,7 @@ class CyclonePush(BotAI):
                         if self.gas_buildings.filter(lambda unit: unit.distance_to(vg) < 1):
                             continue
                         # Select a worker closest to the vespene geysir
-                        worker: Unit = self.select_build_worker(vg)
+                        worker: Unit | None = self.select_build_worker(vg)
                         # Worker can be none in cases where all workers are dead
                         # or 'select_build_worker' function only selects from workers which carry no minerals
                         if worker is None:
@@ -112,9 +112,9 @@ class CyclonePush(BotAI):
         # Saturate gas
         for refinery in self.gas_buildings:
             if refinery.assigned_harvesters < refinery.ideal_harvesters:
-                worker: Units = self.workers.closer_than(10, refinery)
-                if worker:
-                    worker.random.gather(refinery)
+                workers: Units = self.workers.closer_than(10, refinery)
+                if workers:
+                    workers.random.gather(refinery)
 
         for scv in self.workers.idle:
             scv.gather(self.mineral_field.closest_to(cc))

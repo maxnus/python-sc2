@@ -6,6 +6,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from functools import lru_cache
 
+from s2clientprotocol import data_pb2, sc2api_pb2
 from sc2.data import Attribute, Race
 from sc2.ids.ability_id import AbilityId
 from sc2.ids.unit_typeid import UnitTypeId
@@ -20,7 +21,7 @@ FREE_ABILITIES = {"Lower", "Raise", "Land", "Lift", "Hold", "Harvest"}
 
 
 class GameData:
-    def __init__(self, data) -> None:
+    def __init__(self, data: sc2api_pb2.ResponseData) -> None:
         """
         :param data:
         """
@@ -77,14 +78,14 @@ class AbilityData:
     ability_ids: list[int] = [ability_id.value for ability_id in AbilityId][1:]  # sorted list
 
     @classmethod
-    def id_exists(cls, ability_id):
+    def id_exists(cls, ability_id: int) -> bool:
         assert isinstance(ability_id, int), f"Wrong type: {ability_id} is not int"
         if ability_id == 0:
             return False
         i = bisect_left(cls.ability_ids, ability_id)  # quick binary search
         return i != len(cls.ability_ids) and cls.ability_ids[i] == ability_id
 
-    def __init__(self, game_data, proto) -> None:
+    def __init__(self, game_data: GameData, proto: data_pb2.AbilityData) -> None:
         self._game_data = game_data
         self._proto = proto
 
@@ -131,7 +132,7 @@ class AbilityData:
 
 
 class UnitTypeData:
-    def __init__(self, game_data: GameData, proto) -> None:
+    def __init__(self, game_data: GameData, proto: data_pb2.UnitTypeData) -> None:
         """
         :param game_data:
         :param proto:
@@ -172,12 +173,10 @@ class UnitTypeData:
         return self.creation_ability._proto.footprint_radius
 
     @property
-    # pyre-ignore[11]
     def attributes(self) -> list[Attribute]:
-        return self._proto.attributes
+        return [Attribute(i) for i in self._proto.attributes]
 
-    def has_attribute(self, attr) -> bool:
-        # pyre-ignore[6]
+    def has_attribute(self, attr: Attribute) -> bool:
         assert isinstance(attr, Attribute)
         return attr in self.attributes
 
@@ -225,7 +224,6 @@ class UnitTypeData:
         return UnitTypeId(self._proto.unit_alias)
 
     @property
-    # pyre-ignore[11]
     def race(self) -> Race:
         return Race(self._proto.race)
 
@@ -236,8 +234,7 @@ class UnitTypeData:
     @property
     def cost_zerg_corrected(self) -> Cost:
         """This returns 25 for extractor and 200 for spawning pool instead of 75 and 250 respectively"""
-        # pyre-ignore[16]
-        if self.race == Race.Zerg and Attribute.Structure.value in self.attributes:
+        if self.race == Race.Zerg and Attribute.Structure.value in self._proto.attributes:
             return Cost(self._proto.mineral_cost - 50, self._proto.vespene_cost, self._proto.build_time)
         return self.cost
 
@@ -280,7 +277,7 @@ class UnitTypeData:
 
 
 class UpgradeData:
-    def __init__(self, game_data: GameData, proto) -> None:
+    def __init__(self, game_data: GameData, proto: data_pb2.UpgradeData) -> None:
         """
         :param game_data:
         :param proto:

@@ -20,7 +20,6 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
-# pyre-ignore[21]
 from google.protobuf.internal import api_implementation
 from hypothesis import given, settings
 from hypothesis import strategies as st

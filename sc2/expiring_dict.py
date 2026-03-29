@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from collections.abc import Iterable
+from collections.abc import Hashable, Iterable
 from threading import RLock
 from typing import TYPE_CHECKING, Any
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from sc2.bot_ai import BotAI
 
 
-class ExpiringDict(OrderedDict):
+class ExpiringDict(OrderedDict[Hashable, Any]):
     """
     An expiring dict that uses the bot.state.game_loop to only return items that are valid for a specific amount of time.
 
@@ -45,7 +45,7 @@ class ExpiringDict(OrderedDict):
         # pyre-ignore[16]
         return self.bot.state.game_loop
 
-    def __contains__(self, key) -> bool:
+    def __contains__(self, key: Hashable) -> bool:
         """Return True if dict has key, else False, e.g. 'key in dict'"""
         with self.lock:
             if OrderedDict.__contains__(self, key):
@@ -56,7 +56,7 @@ class ExpiringDict(OrderedDict):
                 del self[key]
         return False
 
-    def __getitem__(self, key, with_age: bool = False) -> Any:
+    def __getitem__(self, key: Hashable, with_age: bool = False) -> Any:
         """Return the item of the dict using d[key]"""
         with self.lock:
             # Each item is a list of [value, frame time]
@@ -68,7 +68,7 @@ class ExpiringDict(OrderedDict):
             OrderedDict.__delitem__(self, key)
         raise KeyError(key)
 
-    def __setitem__(self, key, value) -> None:
+    def __setitem__(self, key: Hashable, value: Any) -> None:
         """Set d[key] = value"""
         with self.lock:
             OrderedDict.__setitem__(self, key, (value, self.frame))
@@ -83,10 +83,10 @@ class ExpiringDict(OrderedDict):
         print_str = ", ".join(print_list)
         return f"ExpiringDict({print_str})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__repr__()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Hashable]:
         """Override 'for key in dict:'"""
         with self.lock:
             return self.keys()
@@ -101,7 +101,7 @@ class ExpiringDict(OrderedDict):
                 count += 1
             return count
 
-    def pop(self, key, default=None, with_age: bool = False):
+    def pop(self, key: Hashable, default: Any = None, with_age: bool = False):
         """Return the item and remove it"""
         with self.lock:
             if OrderedDict.__contains__(self, key):
@@ -118,7 +118,7 @@ class ExpiringDict(OrderedDict):
                 return default, self.frame
             return default
 
-    def get(self, key, default=None, with_age: bool = False):
+    def get(self, key: Hashable, default: Any = None, with_age: bool = False):
         """Return the value for key if key is in dict, else default"""
         with self.lock:
             if OrderedDict.__contains__(self, key):
@@ -134,26 +134,26 @@ class ExpiringDict(OrderedDict):
             return None
         return None
 
-    def update(self, other_dict: dict) -> None:
+    def update(self, other_dict: dict[Hashable, Any]) -> None:
         with self.lock:
             for key, value in other_dict.items():
                 self[key] = value
 
-    def items(self) -> Iterable:
+    def items(self) -> Iterable[tuple[Hashable, Any]]:
         """Return iterator of zipped list [keys, values]"""
         with self.lock:
             for key, value in OrderedDict.items(self):
                 if self.frame - value[1] < self.max_age:
                     yield key, value[0]
 
-    def keys(self) -> Iterable:
+    def keys(self) -> Iterable[Hashable]:
         """Return iterator of keys"""
         with self.lock:
             for key, value in OrderedDict.items(self):
                 if self.frame - value[1] < self.max_age:
                     yield key
 
-    def values(self) -> Iterable:
+    def values(self) -> Iterable[Any]:
         """Return iterator of values"""
         with self.lock:
             for value in OrderedDict.values(self):

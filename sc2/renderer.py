@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import datetime
+from typing import TYPE_CHECKING
 
-# pyre-ignore[21]
 from s2clientprotocol import score_pb2 as score_pb
-
+from s2clientprotocol.sc2api_pb2 import ResponseObservation
 from sc2.position import Point2
+
+if TYPE_CHECKING:
+    from sc2.client import Client
 
 
 class Renderer:
-    def __init__(self, client, map_size, minimap_size) -> None:
+    def __init__(self, client: Client, map_size: tuple[float, float], minimap_size: tuple[float, float]) -> None:
         self._client = client
 
         self._window = None
@@ -22,7 +27,7 @@ class Renderer:
         self._text_score = None
         self._text_time = None
 
-    async def render(self, observation) -> None:
+    async def render(self, observation: ResponseObservation) -> None:
         render_data = observation.observation.render_data
 
         map_size = render_data.map.size

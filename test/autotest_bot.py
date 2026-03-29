@@ -458,7 +458,7 @@ class TestBot(BotAI):
                 # Pick scv
                 scv: Unit = self.workers.random
                 # Pick location to build depot on
-                placement_position: Point2 = await self.find_placement(
+                placement_position: Point2 | None = await self.find_placement(
                     UnitTypeId.SUPPLYDEPOT, near=self.townhalls.random.position
                 )
                 if placement_position:

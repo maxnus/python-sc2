@@ -7,7 +7,7 @@ class CompetitiveBot(BotAI):
         print("Game started")
         # Do things here before the game starts
 
-    async def on_step(self, iteration):
+    async def on_step(self, iteration: int):
         # Populate this function with whatever your bot should do!
         pass
 

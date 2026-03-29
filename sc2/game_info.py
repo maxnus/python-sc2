@@ -80,6 +80,10 @@ class Ramp:
         return frozenset(result)
 
     @cached_property
+    def center(self) -> Point2:
+        return Point2.center([self.bottom_center, self.top_center])
+
+    @cached_property
     def bottom_center(self) -> Point2:
         length = len(self.lower)
         pos = Point2((sum(p.x for p in self.lower) / length, sum(p.y for p in self.lower) / length))

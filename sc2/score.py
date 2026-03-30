@@ -13,7 +13,7 @@ class ScoreDetails:
         self._proto = proto.score_details
 
     @property
-    def summary(self) -> list[list[int | float]]:
+    def summary(self) -> list[list[float]]:
         """
         TODO this is super ugly, how can we improve this summary?
         Print summary to file with:
@@ -105,6 +105,7 @@ class ScoreDetails:
             "current_apm",
             "current_effective_apm",
         ]
+        # pyrefly: ignore
         return [[value, getattr(self, value)] for value in values]
 
     @property

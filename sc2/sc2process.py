@@ -132,9 +132,9 @@ class SC2Process:
 
     def find_data_hash(self, target_sc2_version: str) -> str | None:
         """Returns the data hash from the matching version string."""
-        version: dict
         for version in self.versions:
             if version["label"] == target_sc2_version:
+                # pyrefly: ignore
                 return version["data-hash"]
         return None
 
@@ -154,7 +154,7 @@ class SC2Process:
         else:
             executable = str(Paths.EXECUTABLE)
 
-        if self._port is None:
+        if self._port == -1:
             self._port = portpicker.pick_unused_port()
             self._used_portpicker = True
         args = paths.get_runner_args(Paths.CWD) + [
@@ -222,6 +222,7 @@ class SC2Process:
             await asyncio.sleep(1)
             try:
                 self._session = aiohttp.ClientSession()
+                # pyrefly: ignore
                 ws = await self._session.ws_connect(self.ws_url, timeout=120)
                 # FIXME fix deprecation warning in for future aiohttp version
                 # ws = await self._session.ws_connect(
@@ -229,8 +230,9 @@ class SC2Process:
                 # )
                 logger.debug("Websocket connection ready")
                 return ws
-            except aiohttp.client_exceptions.ClientConnectorError:
-                await self._session.close()
+            except aiohttp.ClientConnectorError:
+                if self._session is not None:
+                    await self._session.close()
                 if i > 15:
                     logger.debug("Connection refused (startup not complete (yet))")
 
@@ -266,6 +268,7 @@ class SC2Process:
                 self._process.wait()
                 logger.error("KILLED")
             # Try to kill wineserver on linux
+            # pyrefly: ignore
             if paths.PF in {"Linux", "WineLinux"}:
                 # Command wineserver not detected
                 with suppress(FileNotFoundError), subprocess.Popen(["wineserver", "-k"]) as p:
@@ -278,6 +281,6 @@ class SC2Process:
         self._ws = None
         if self._used_portpicker and self._port is not None:
             portpicker.return_port(self._port)
-            self._port = None
+            self._port = -1
         if verbose:
             logger.info("Cleanup complete")

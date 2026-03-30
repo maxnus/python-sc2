@@ -68,16 +68,16 @@ class RealTimeTestBot(BotAI):
                     continue
                 if self.enemy_structures.closer_than(10, expansion_location):
                     continue
-                await self.client.debug_create_unit([[UnitTypeId.NEXUS, 1, expansion_location, 1]])
+                await self.client.debug_create_unit([(UnitTypeId.NEXUS, 1, expansion_location, 1)])
                 logger.info(
                     f"{self.time_formatted} {self.state.game_loop} Spawning a nexus {self.supply_used} / {self.supply_cap}"
                 )
                 made_nexus = True
-                break
+                continue
 
         # Spawn new pylon in map center if no more expansions are available
         if self.supply_left == 0 and not made_nexus:
-            await self.client.debug_create_unit([[UnitTypeId.PYLON, 1, self.game_info.map_center, 1]])
+            await self.client.debug_create_unit([(UnitTypeId.PYLON, 1, self.game_info.map_center, 1)])
 
         # Don't get disturbed during this test
         if self.enemy_units:
@@ -92,7 +92,6 @@ class RealTimeTestBot(BotAI):
         if unit.is_structure:
             unit(AbilityId.RALLY_WORKERS, self.mineral_field.closest_to(unit))
 
-    # pyre-ignore[11]
     async def on_end(self, game_result: Result):
         global on_end_was_called
         on_end_was_called = True

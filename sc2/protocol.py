@@ -113,7 +113,7 @@ class Protocol:
     async def _execute(self, **kwargs) -> sc_pb.Response:
         assert len(kwargs) == 1, "Only one request allowed by the API"
 
-        response = await self.__request(sc_pb.Request(**kwargs))
+        response: sc_pb.Response = await self.__request(sc_pb.Request(**kwargs))
 
         new_status = Status(response.status)
         if new_status != self._status:

@@ -136,7 +136,6 @@ class ZergRushBot(BotAI):
                 color = Point3((0, 255, 0))
             self.client.debug_box2_out(pos, half_vertex_length=0.25, color=color)
 
-    # pyre-ignore[11]
     async def on_end(self, game_result: Result):
         self.on_end_called = True
         logger.info(f"{self.time_formatted} On end was called")

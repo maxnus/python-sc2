@@ -231,8 +231,6 @@ class TestBot(BotAI):
 
         await self.clean_up_center()
 
-        attacker: Unit
-        defender: Unit
         for upgrade_level in upgrade_levels:
             if upgrade_level != 0:
                 await self.client.debug_upgrade()
@@ -252,7 +250,7 @@ class TestBot(BotAI):
 
                     # Spawn units
                     await self.client.debug_create_unit(
-                        [[attacker_type, 1, map_center, 1], [defender_type, 1, map_center, 2]]
+                        [(attacker_type, 1, map_center, 1), (defender_type, 1, map_center, 2)]
                     )
                     await self._advance_steps(1)
 
@@ -292,8 +290,10 @@ class TestBot(BotAI):
                         await self._advance_steps(1)
                         # Unsure why I have to recalculate this here again but it prevents a bug
                         attacker, defender = get_attacker_and_defender()
+                        # pyrefly: ignore
                         expected_damage: float = max(expected_damage, attacker.calculate_damage_vs_target(defender)[0])
                         real_damage = math.ceil(
+                            # pyrefly: ignore
                             defender.health_max + defender.shield_max - defender.health - defender.shield
                         )
                         # logger.info(
@@ -304,6 +304,7 @@ class TestBot(BotAI):
                             f"Step limit reached. Test timed out for attacker {attacker_type} and defender {defender_type}"
                         )
                     assert expected_damage == real_damage, (
+                        # pyrefly: ignore
                         f"Expected damage does not match real damage: Unit type {attacker_type} (attack upgrade: {attacker.attack_upgrade_level}) deals {real_damage} damage against {defender_type} (armor upgrade: {defender.armor_upgrade_level} and shield upgrade: {defender.shield_upgrade_level}) but calculated damage was {expected_damage}, attacker weapons: \n{attacker._weapons}"
                     )
 
@@ -321,7 +322,6 @@ class EmptyBot(BotAI):
             await self.client.debug_kill_unit(self.units)
 
     async def on_step(self, iteration: int):
-        # pyre-ignore[16]
         map_center = self.game_info.map_center
         enemies = self.enemy_units | self.enemy_structures
         if enemies:

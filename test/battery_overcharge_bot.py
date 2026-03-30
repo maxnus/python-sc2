@@ -18,9 +18,9 @@ class BatteryOverchargeBot(BotAI):
         """Spawn requires structures."""
         await self.client.debug_create_unit(
             [
-                [UnitTypeId.PYLON, 1, self.start_location.towards(self.game_info.map_center, 5), 1],
-                [UnitTypeId.SHIELDBATTERY, 1, self.start_location.towards(self.game_info.map_center, 5), 1],
-                [UnitTypeId.CYBERNETICSCORE, 1, self.start_location.towards(self.game_info.map_center, 5), 1],
+                (UnitTypeId.PYLON, 1, self.start_location.towards(self.game_info.map_center, 5), 1),
+                (UnitTypeId.SHIELDBATTERY, 1, self.start_location.towards(self.game_info.map_center, 5), 1),
+                (UnitTypeId.CYBERNETICSCORE, 1, self.start_location.towards(self.game_info.map_center, 5), 1),
             ]
         )
 

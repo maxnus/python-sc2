@@ -10,6 +10,7 @@ def main():
     portconfig: Portconfig = Portconfig()
     print(portconfig.as_json)
 
+    # pyrefly: ignore
     player_config = [Bot(Race.Zerg, ZergRushBot()), Bot(Race.Zerg, None)]
 
     for g in _host_game_iter(maps.get("Abyssal Reef LE"), player_config, realtime=False, portconfig=portconfig):

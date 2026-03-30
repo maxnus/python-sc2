@@ -42,19 +42,21 @@ class FightBot(BotAI):
             return
 
     async def reset_arena(self):
+        if self.enemy_location is None:
+            return
         await self.client.debug_kill_unit(self.all_units)
 
         await self.client.debug_create_unit(
             [
-                [UnitTypeId.SUPPLYDEPOT, 1, self.enemy_location, OPPONENT_PLAYER_ID],
-                [UnitTypeId.MARINE, 4, self.enemy_location.towards(self.start_location, 8), OPPONENT_PLAYER_ID],
+                (UnitTypeId.SUPPLYDEPOT, 1, self.enemy_location, OPPONENT_PLAYER_ID),
+                (UnitTypeId.MARINE, 4, self.enemy_location.towards(self.start_location, 8), OPPONENT_PLAYER_ID),
             ]
         )
 
         await self.client.debug_create_unit(
             [
-                [UnitTypeId.SUPPLYDEPOT, 1, self.start_location, MY_PLAYER_ID],
-                [UnitTypeId.MARINE, 4, self.start_location.towards(self.enemy_location, 8), MY_PLAYER_ID],
+                (UnitTypeId.SUPPLYDEPOT, 1, self.start_location, MY_PLAYER_ID),
+                (UnitTypeId.MARINE, 4, self.start_location.towards(self.enemy_location, 8), MY_PLAYER_ID),
             ]
         )
 
@@ -63,6 +65,8 @@ class FightBot(BotAI):
             unit.attack(self.start_location)
 
     async def manage_own_units(self):
+        if self.enemy_location is None:
+            return
         for unit in self.units(UnitTypeId.MARINE):
             unit.attack(self.enemy_location)
             # TODO: implement your fight logic here

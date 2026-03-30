@@ -36,7 +36,6 @@ docker cp uv.lock test_container:/root/python-sc2/
 docker exec -i test_container bash -c "pip install uv && cd python-sc2 && uv sync --no-cache --no-install-project"
 
 docker cp sc2 test_container:/root/python-sc2/sc2
-docker cp s2clientprotocol test_container:/root/python-sc2/s2clientprotocol
 docker cp test test_container:/root/python-sc2/test
 
 # Run various test bots

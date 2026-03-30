@@ -6,7 +6,10 @@ Bot has a chance to win against elite (=Difficulty.VeryHard) zerg AI
 Bot made by Burny
 """
 
+from __future__ import annotations
+
 import random
+from typing import Literal
 
 from sc2 import maps
 from sc2.bot_ai import BotAI
@@ -124,9 +127,6 @@ class MassReaperBot(BotAI):
                             # Caution: the target for the refinery has to be the vespene geyser, not its position!
                             worker.build_gas(vg)
 
-                            # Dont build more than one each frame
-                            break
-
         # Make scvs until 22, usually you only need 1:1 mineral:gas ratio for reapers, but if you don't lose any then you will need additional depots (mule income should take care of that)
         # Stop scv production when barracks is complete but we still have a command center (priotize morphing to orbital command)
         if (
@@ -156,32 +156,32 @@ class MassReaperBot(BotAI):
         # Reaper micro
         enemies: Units = self.enemy_units | self.enemy_structures
         enemies_can_attack: Units = enemies.filter(lambda unit: unit.can_attack_ground)
-        for r in self.units(UnitTypeId.REAPER):
+        for reaper_unit in self.units(UnitTypeId.REAPER):
             # Move to range 15 of closest unit if reaper is below 20 hp and not regenerating
             enemy_threats_close: Units = enemies_can_attack.filter(
-                lambda unit: unit.distance_to(r) < 15
+                lambda unit: unit.distance_to(reaper_unit) < 15
             )  # Threats that can attack the reaper
 
-            if r.health_percentage < 2 / 5 and enemy_threats_close:
-                retreat_points: set[Point2] = self.neighbors8(r.position, distance=2) | self.neighbors8(
-                    r.position, distance=4
+            if reaper_unit.health_percentage < 2 / 5 and enemy_threats_close:
+                retreat_points: set[Point2] = self.neighbors8(reaper_unit.position, distance=2) | self.neighbors8(
+                    reaper_unit.position, distance=4
                 )
                 # Filter points that are pathable
                 retreat_points: set[Point2] = {x for x in retreat_points if self.in_pathing_grid(x)}
                 if retreat_points:
-                    closest_enemy: Unit = enemy_threats_close.closest_to(r)
+                    closest_enemy: Unit = enemy_threats_close.closest_to(reaper_unit)
                     retreat_point: Point2 = closest_enemy.position.furthest(retreat_points)
-                    r.move(retreat_point)
+                    reaper_unit.move(retreat_point)
                     continue  # Continue for loop, dont execute any of the following
 
             # Reaper is ready to attack, shoot nearest ground unit
             enemy_ground_units: Units = enemies.filter(
-                lambda unit: unit.distance_to(r) < 5 and not unit.is_flying
+                lambda unit: unit.distance_to(reaper_unit) < 5 and not unit.is_flying
             )  # Hardcoded attackrange of 5
-            if r.weapon_cooldown == 0 and enemy_ground_units:
-                enemy_ground_units: Units = enemy_ground_units.sorted(lambda x: x.distance_to(r))
+            if reaper_unit.weapon_cooldown == 0 and enemy_ground_units:
+                enemy_ground_units: Units = enemy_ground_units.sorted(lambda x: x.distance_to(reaper_unit))
                 closest_enemy: Unit = enemy_ground_units[0]
-                r.attack(closest_enemy)
+                reaper_unit.attack(closest_enemy)
                 continue  # Continue for loop, dont execute any of the following
 
             # Attack is on cooldown, check if grenade is on cooldown, if not then throw it to furthest enemy in range 5
@@ -192,51 +192,53 @@ class MassReaperBot(BotAI):
                 lambda unit: not unit.is_structure
                 and not unit.is_flying
                 and unit.type_id not in {UnitTypeId.LARVA, UnitTypeId.EGG}
-                and unit.distance_to(r) < reaper_grenade_range
+                and unit.distance_to(reaper_unit) < reaper_grenade_range
             )
-            if enemy_ground_units_in_grenade_range and (r.is_attacking or r.is_moving):
+            if enemy_ground_units_in_grenade_range and (reaper_unit.is_attacking or reaper_unit.is_moving):
                 # If AbilityId.KD8CHARGE_KD8CHARGE in abilities, we check that to see if the reaper grenade is off cooldown
-                abilities = await self.get_available_abilities(r)
+                abilities: list[AbilityId] = await self.get_available_abilities(reaper_unit)  # pyrefly: ignore
                 enemy_ground_units_in_grenade_range = enemy_ground_units_in_grenade_range.sorted(
-                    lambda x: x.distance_to(r), reverse=True
+                    lambda x: x.distance_to(reaper_unit), reverse=True
                 )
-                furthest_enemy: Unit = None
+                furthest_enemy: Unit | None = None
                 for enemy in enemy_ground_units_in_grenade_range:
-                    if await self.can_cast(r, AbilityId.KD8CHARGE_KD8CHARGE, enemy, cached_abilities_of_unit=abilities):
-                        furthest_enemy: Unit = enemy
+                    if await self.can_cast(
+                        reaper_unit, AbilityId.KD8CHARGE_KD8CHARGE, enemy, cached_abilities_of_unit=abilities
+                    ):
+                        furthest_enemy = enemy
                         break
-                if furthest_enemy:
-                    r(AbilityId.KD8CHARGE_KD8CHARGE, furthest_enemy)
+                if furthest_enemy is not None:
+                    reaper_unit(AbilityId.KD8CHARGE_KD8CHARGE, furthest_enemy)
                     continue  # Continue for loop, don't execute any of the following
 
             # Move to max unit range if enemy is closer than 4
             enemy_threats_very_close: Units = enemies.filter(
-                lambda unit: unit.can_attack_ground and unit.distance_to(r) < 4.5
+                lambda unit: unit.can_attack_ground and unit.distance_to(reaper_unit) < 4.5
             )  # Hardcoded attackrange minus 0.5
             # Threats that can attack the reaper
-            if r.weapon_cooldown != 0 and enemy_threats_very_close:
-                retreat_points: set[Point2] = self.neighbors8(r.position, distance=2) | self.neighbors8(
-                    r.position, distance=4
+            if reaper_unit.weapon_cooldown != 0 and enemy_threats_very_close:
+                retreat_points: set[Point2] = self.neighbors8(reaper_unit.position, distance=2) | self.neighbors8(
+                    reaper_unit.position, distance=4
                 )
                 # Filter points that are pathable by a reaper
                 retreat_points: set[Point2] = {x for x in retreat_points if self.in_pathing_grid(x)}
                 if retreat_points:
-                    closest_enemy: Unit = enemy_threats_very_close.closest_to(r)
+                    closest_enemy: Unit = enemy_threats_very_close.closest_to(reaper_unit)
                     retreat_point: Point2 = max(
-                        retreat_points, key=lambda x: x.distance_to(closest_enemy) - x.distance_to(r)
+                        retreat_points, key=lambda x: x.distance_to(closest_enemy) - x.distance_to(reaper_unit)
                     )
-                    r.move(retreat_point)
+                    reaper_unit.move(retreat_point)
                     continue  # Continue for loop, don't execute any of the following
 
             # Move to nearest enemy ground unit/building because no enemy unit is closer than 5
             all_enemy_ground_units: Units = self.enemy_units.not_flying
             if all_enemy_ground_units:
-                closest_enemy: Unit = all_enemy_ground_units.closest_to(r)
-                r.move(closest_enemy)
+                closest_enemy: Unit = all_enemy_ground_units.closest_to(reaper_unit)
+                reaper_unit.move(closest_enemy)
                 continue  # Continue for loop, don't execute any of the following
 
             # Move to random enemy start location if no enemy buildings have been seen
-            r.move(random.choice(self.enemy_start_locations))
+            reaper_unit.move(random.choice(self.enemy_start_locations))
 
         # Manage idle scvs, would be taken care by distribute workers aswell
         if self.townhalls:
@@ -287,7 +289,7 @@ class MassReaperBot(BotAI):
 
         # Find all gas_buildings that have surplus or deficit
         deficit_gas_buildings = {}
-        surplusgas_buildings = {}
+        surplus_gas_buildings = {}
         for g in self.gas_buildings.filter(lambda x: x.vespene_contents > 0):
             # Only loop over gas_buildings that have still gas in them
             deficit = g.ideal_harvesters - g.assigned_harvesters
@@ -305,11 +307,11 @@ class MassReaperBot(BotAI):
                         w = surplus_workers.pop()
                         worker_pool.append(w)
                         worker_pool_tags.add(w.tag)
-                surplusgas_buildings[g.tag] = {"unit": g, "deficit": deficit}
+                surplus_gas_buildings[g.tag] = {"unit": g, "deficit": deficit}
 
         # Find all townhalls that have surplus or deficit
-        deficit_townhalls = {}
-        surplus_townhalls = {}
+        deficit_townhalls: dict[int, dict[Literal["unit", "deficit"], Unit | int]] = {}
+        surplus_townhalls: dict[int, dict[Literal["unit", "deficit"], Unit | int]] = {}
         if not only_saturate_gas:
             for th in self.townhalls:
                 deficit = th.ideal_harvesters - th.assigned_harvesters
@@ -333,7 +335,7 @@ class MassReaperBot(BotAI):
             if all(
                 [
                     len(deficit_gas_buildings) == 0,
-                    len(surplusgas_buildings) == 0,
+                    len(surplus_gas_buildings) == 0,
                     len(surplus_townhalls) == 0 or deficit_townhalls == 0,
                 ]
             ):
@@ -341,15 +343,26 @@ class MassReaperBot(BotAI):
                 return
 
         # Check if deficit in gas less or equal than what we have in surplus, else grab some more workers from surplus bases
+        # pyrefly: ignore
         deficit_gas_count = sum(
-            gasInfo["deficit"] for gasTag, gasInfo in deficit_gas_buildings.items() if gasInfo["deficit"] > 0
+            # pyrefly: ignore
+            gas_info["deficit"]
+            for _gas_tag, gas_info in deficit_gas_buildings.items()
+            # pyrefly: ignore
+            if gas_info["deficit"] > 0
         )
         surplus_count = sum(
-            -gasInfo["deficit"] for gasTag, gasInfo in surplusgas_buildings.items() if gasInfo["deficit"] < 0
+            # pyrefly: ignore
+            -gas_info["deficit"]
+            for _gas_tag, gas_info in surplus_gas_buildings.items()
+            # pyrefly: ignore
+            if gas_info["deficit"] < 0
         )
         surplus_count += sum(
+            # pyrefly: ignore
             -townhall_info["deficit"]
-            for townhall_tag, townhall_info in surplus_townhalls.items()
+            for _townhall_tag, townhall_info in surplus_townhalls.items()
+            # pyrefly: ignore
             if townhall_info["deficit"] < 0
         )
 
@@ -358,6 +371,7 @@ class MassReaperBot(BotAI):
             for _gas_tag, gas_info in deficit_gas_buildings.items():
                 if worker_pool.amount >= deficit_gas_count:
                     break
+                # pyrefly: ignore
                 workers_near_gas = self.workers.closer_than(10, gas_info["unit"]).filter(
                     lambda w: w.tag not in worker_pool_tags
                     and len(w.orders) == 1
@@ -374,12 +388,15 @@ class MassReaperBot(BotAI):
             if performance_heavy:
                 # Sort furthest away to closest (as the pop() function will take the last element)
                 worker_pool.sort(key=lambda x: x.distance_to(gas_info["unit"]), reverse=True)
+            # pyrefly: ignore
             for _ in range(gas_info["deficit"]):
                 if worker_pool.amount > 0:
                     w = worker_pool.pop()
                     if len(w.orders) == 1 and w.orders[0].ability.id in [AbilityId.HARVEST_RETURN]:
+                        # pyrefly: ignore
                         w.gather(gas_info["unit"], queue=True)
                     else:
+                        # pyrefly: ignore
                         w.gather(gas_info["unit"])
 
         if not only_saturate_gas:
@@ -388,10 +405,15 @@ class MassReaperBot(BotAI):
                 if performance_heavy:
                     # Sort furthest away to closest (as the pop() function will take the last element)
                     worker_pool.sort(key=lambda x: x.distance_to(townhall_info["unit"]), reverse=True)
+                # pyrefly: ignore
                 for _ in range(townhall_info["deficit"]):
                     if worker_pool.amount > 0:
                         w = worker_pool.pop()
-                        mf = self.mineral_field.closer_than(10, townhall_info["unit"]).closest_to(w)
+                        mf = self.mineral_field.closer_than(
+                            10,
+                            # pyrefly: ignore
+                            townhall_info["unit"],
+                        ).closest_to(w)
                         if len(w.orders) == 1 and w.orders[0].ability.id in [AbilityId.HARVEST_RETURN]:
                             w.gather(mf, queue=True)
                         else:

@@ -1,10 +1,9 @@
-# pyre-ignore-all-errors[16, 21]
 import sys
 
-from __init__ import run_ladder_game
+from examples.competitive.__init__ import run_ladder_game
 
 # Load bot
-from bot import CompetitiveBot
+from examples.competitive.bot import CompetitiveBot
 
 from sc2 import maps
 from sc2.data import Difficulty, Race

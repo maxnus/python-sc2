@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[29]
 from __future__ import annotations
 
 from bisect import bisect_left
@@ -49,7 +48,6 @@ class GameData:
             if not AbilityData.id_exists(unit.creation_ability.id.value):
                 continue
 
-            # pyre-ignore[16]
             if unit.creation_ability.is_free_morph:
                 continue
 
@@ -265,9 +263,7 @@ class UnitTypeData:
             self._game_data.units[tech_alias.value].cost.minerals for tech_alias in self.tech_alias
         )
         tech_alias_cost_vespene = max(
-            self._game_data.units[tech_alias.value].cost.vespene
-            # pyre-ignore[16]
-            for tech_alias in self.tech_alias
+            self._game_data.units[tech_alias.value].cost.vespene for tech_alias in self.tech_alias
         )
         return Cost(
             self._proto.mineral_cost - tech_alias_cost_minerals,

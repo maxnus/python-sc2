@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[21]
 import math
 import random
 

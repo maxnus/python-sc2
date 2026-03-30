@@ -1,10 +1,10 @@
-# pyre-ignore-all-errors[16, 29]
 from __future__ import annotations
 
 import asyncio
 import os
 import platform
 import subprocess
+import sys
 import time
 import traceback
 from pathlib import Path
@@ -59,7 +59,8 @@ class Proxy:
             elif self.controller._status == Status.ended:
                 await self.get_response()
         elif request.HasField("join_game") and not request.join_game.HasField("player_name"):
-            request.join_game.player_name = self.player.name
+            if self.player.name is not None:
+                request.join_game.player_name = self.player.name
         await self.controller._ws.send_bytes(request.SerializeToString())
 
     # TODO Catching too general exception Exception (broad-except)
@@ -175,8 +176,9 @@ class Proxy:
 
         subproc_args = {"cwd": str(self.player.path), "stderr": subprocess.STDOUT}
         if platform.system() == "Linux":
+            # pyrefly: ignore
             subproc_args["preexec_fn"] = os.setpgrp
-        elif platform.system() == "Windows":
+        elif platform.system() == "Windows" and sys.platform == "win32":
             subproc_args["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
 
         player_command_line = self.player.cmd_line(self.port, startport, self.controller._process._host, self.realtime)

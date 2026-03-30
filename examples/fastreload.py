@@ -20,7 +20,8 @@ def main():
         input("Press enter to reload ")
 
         reload(zerg_rush)
-        player_config[0].ai = zerg_rush.ZergRushBot()
+        if isinstance(player_config[0], Bot):
+            player_config[0].ai = zerg_rush.ZergRushBot()
         gen.send(player_config)
 
 

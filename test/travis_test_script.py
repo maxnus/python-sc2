@@ -49,34 +49,32 @@ if len(sys.argv) > 1:
         # Break as the bot run was successful
         break
 
-    # pyre-ignore[16]
-    if process.returncode is not None:
+    if process is not None and process.returncode is not None and result is not None:
         # Reformat the output into a list
-        # pyre-ignore[16]
-        logger.info_output = result
+
         linebreaks = [
-            # pyre-ignore[16]
-            ["\r\n", logger.info_output.count("\r\n")],
-            ["\r", logger.info_output.count("\r")],
-            ["\n", logger.info_output.count("\n")],
+            ("\r\n", result.count("\r\n")),
+            ("\r", result.count("\r")),
+            ("\n", result.count("\n")),
         ]
         most_linebreaks_type = max(linebreaks, key=lambda x: x[1])
         linebreak_type, linebreak_count = most_linebreaks_type
-        # pyre-ignore[16]
-        output_as_list = logger.info_output.split(linebreak_type)
+
+        output_as_list = result.split(linebreak_type)
         logger.info("Travis test script, bot output:\r\n{}\r\nEnd of bot output".format("\r\n".join(output_as_list)))
 
     time_taken = time.time() - t0
 
     # Bot was not successfully run in time, returncode will be None
-    if process.returncode is None or process.returncode != 0:
+    if process is not None and (process.returncode is None or process.returncode != 0):
         logger.info(
             f"Exiting with exit code 5, error: Attempted to launch script {sys.argv[1]} timed out after {time_taken} seconds. Retries completed: {i}"
         )
         sys.exit(5)
 
     # process.returncode will always return 0 if the game was run successfully or if there was a python error (in this case it returns as defeat)
-    logger.info(f"Returncode: {process.returncode}")
+    if process is not None and process.returncode is not None:
+        logger.info(f"Returncode: {process.returncode}")
     logger.info(f"Game took {round(time.time() - t0, 1)} real time seconds")
     if process is not None and process.returncode == 0:
         for line in output_as_list:

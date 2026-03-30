@@ -31,20 +31,22 @@ class RampWallBot(BotAI):
         if self.can_afford(UnitTypeId.SCV) and self.workers.amount < 16 and cc.is_idle:
             cc.train(UnitTypeId.SCV)
 
-        # Raise depos when enemies are nearby
-        for depo in self.structures(UnitTypeId.SUPPLYDEPOT).ready:
-            for unit in self.enemy_units:
-                if unit.distance_to(depo) < 15:
-                    break
-            else:
-                depo(AbilityId.MORPH_SUPPLYDEPOT_LOWER)
+        def raise_and_lower_depots():
+            # Raise depos when enemies are nearby
+            for depo in self.structures(UnitTypeId.SUPPLYDEPOT).ready:
+                for unit in self.enemy_units:
+                    if unit.distance_to(depo) < 15:
+                        return
+                else:
+                    depo(AbilityId.MORPH_SUPPLYDEPOT_LOWER)
+            # Lower depos when no enemies are nearby
+            for depo in self.structures(UnitTypeId.SUPPLYDEPOTLOWERED).ready:
+                for unit in self.enemy_units:
+                    if unit.distance_to(depo) < 10:
+                        depo(AbilityId.MORPH_SUPPLYDEPOT_RAISE)
+                        return
 
-        # Lower depos when no enemies are nearby
-        for depo in self.structures(UnitTypeId.SUPPLYDEPOTLOWERED).ready:
-            for unit in self.enemy_units:
-                if unit.distance_to(depo) < 10:
-                    depo(AbilityId.MORPH_SUPPLYDEPOT_RAISE)
-                    break
+        raise_and_lower_depots()
 
         # Draw ramp points
         self.draw_ramp_points()
@@ -252,7 +254,7 @@ class RampWallBot(BotAI):
             for selected_unit2 in self.units.selected:
                 if selected_unit1 == selected_unit2:
                     continue
-                if selected_unit2.is_facing_unit(selected_unit1):
+                if selected_unit2.is_facing(selected_unit1):
                     self.client.debug_box2_out(selected_unit2, half_vertex_length=0.25, color=green)
                 else:
                     self.client.debug_box2_out(selected_unit2, half_vertex_length=0.25, color=red)

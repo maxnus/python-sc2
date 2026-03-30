@@ -93,10 +93,11 @@ def detect() -> str | None:
     # Unix-style newlines for safety's sake.
     lines = re.sub(r"\000|\r", "", wsl_proc.stdout.decode("utf-8")).split("\n")
 
-    def line_has_proc(ln):
-        return re.search("^\\s*[*]?\\s+" + wsl_name, ln)
+    def line_has_proc(ln: str):
+        if wsl_name is not None:
+            return re.search("^\\s*[*]?\\s+" + wsl_name, ln)
 
-    def line_version(ln):
+    def line_version(ln: str):
         return re.sub("^.*\\s+(\\d+)\\s*$", "\\1", ln)
 
     versions = [line_version(ln) for ln in lines if line_has_proc(ln)]

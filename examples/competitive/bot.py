@@ -11,7 +11,6 @@ class CompetitiveBot(BotAI):
         # Populate this function with whatever your bot should do!
         pass
 
-    # pyre-ignore[11]
     async def on_end(self, game_result: Result):
         print("Game ended.")
         # Do things here after the game ends

@@ -1,9 +1,9 @@
-# pyre-ignore-all-errors[11, 16]
 from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
 from itertools import chain
+from s2clientprotocol.raw_pb2 import Effect, Unit
 
 from loguru import logger
 
@@ -46,7 +46,7 @@ class Blip:
         return self._proto.display_type == DisplayType.Visible.value
 
     @property
-    def alliance(self) -> Alliance:
+    def alliance(self) -> int:
         return self._proto.alliance
 
     @property
@@ -97,7 +97,7 @@ class EffectData:
         :param proto:
         :param fake:
         """
-        self._proto = proto
+        self._proto: Effect | Unit = proto
         self.fake = fake
 
     @property
@@ -133,7 +133,7 @@ class EffectData:
 
     @property
     def radius(self) -> float:
-        if self.fake:
+        if isinstance(self._proto, Unit):
             return FakeEffectRadii[self._proto.unit_type]
         return self._proto.radius
 
@@ -149,6 +149,8 @@ class ChatMessage:
 
 @dataclass
 class AbilityLookupTemplateClass:
+    ability_id: int
+
     @property
     def exact_id(self) -> AbilityId:
         return AbilityId(self.ability_id)
@@ -164,7 +166,6 @@ class AbilityLookupTemplateClass:
 @dataclass
 class ActionRawUnitCommand(AbilityLookupTemplateClass):
     game_loop: int
-    ability_id: int
     unit_tags: list[int]
     queue_command: bool
     target_world_space_pos: Point2 | None
@@ -174,7 +175,6 @@ class ActionRawUnitCommand(AbilityLookupTemplateClass):
 @dataclass
 class ActionRawToggleAutocast(AbilityLookupTemplateClass):
     game_loop: int
-    ability_id: int
     unit_tags: list[int]
 
 
@@ -185,7 +185,6 @@ class ActionRawCameraMove:
 
 @dataclass
 class ActionError(AbilityLookupTemplateClass):
-    ability_id: int
     unit_tag: int
     # See here for the codes of 'result': https://github.com/Blizzard/s2client-proto/blob/01ab351e21c786648e4c6693d4aad023a176d45c/s2clientprotocol/error.proto#L6
     result: int
@@ -212,7 +211,7 @@ class GameState:
         self.common: Common = Common(self.observation.player_common)
 
         # Area covered by Pylons and Warpprisms
-        self.psionic_matrix: PsionicMatrix = PsionicMatrix.from_proto(self.observation_raw.player.power_sources)
+        self.psionic_matrix: PsionicMatrix = PsionicMatrix.from_proto(list(self.observation_raw.player.power_sources))
         # 22.4 per second on faster game speed
         self.game_loop: int = self.observation.game_loop
 
@@ -259,7 +258,7 @@ class GameState:
         """
         if self.previous_observation is not None:
             return list(chain(self.previous_observation.observation.alerts, self.observation.alerts))
-        return self.observation.alerts
+        return list(self.observation.alerts)
 
     @cached_property
     def actions(self) -> list[ActionRawUnitCommand | ActionRawToggleAutocast | ActionRawCameraMove]:
@@ -283,7 +282,7 @@ class GameState:
                         ActionRawUnitCommand(
                             game_loop,
                             raw_unit_command.ability_id,
-                            raw_unit_command.unit_tags,
+                            list(raw_unit_command.unit_tags),
                             raw_unit_command.queue_command,
                             Point2.from_proto(raw_unit_command.target_world_space_pos),
                         )
@@ -294,7 +293,7 @@ class GameState:
                         ActionRawUnitCommand(
                             game_loop,
                             raw_unit_command.ability_id,
-                            raw_unit_command.unit_tags,
+                            list(raw_unit_command.unit_tags),
                             raw_unit_command.queue_command,
                             None,
                             raw_unit_command.target_unit_tag,
@@ -307,7 +306,7 @@ class GameState:
                     ActionRawToggleAutocast(
                         game_loop,
                         raw_toggle_autocast_action.ability_id,
-                        raw_toggle_autocast_action.unit_tags,
+                        list(raw_toggle_autocast_action.unit_tags),
                     )
                 )
             else:
@@ -321,7 +320,7 @@ class GameState:
         List of successful unit actions since last frame.
         See https://github.com/Blizzard/s2client-proto/blob/01ab351e21c786648e4c6693d4aad023a176d45c/s2clientprotocol/raw.proto#L185-L193
         """
-        # pyre-ignore[7]
+
         return list(filter(lambda action: isinstance(action, ActionRawUnitCommand), self.actions))
 
     @cached_property
@@ -330,7 +329,7 @@ class GameState:
         List of successful autocast toggle actions since last frame.
         See https://github.com/Blizzard/s2client-proto/blob/01ab351e21c786648e4c6693d4aad023a176d45c/s2clientprotocol/raw.proto#L199-L202
         """
-        # pyre-ignore[7]
+
         return list(filter(lambda action: isinstance(action, ActionRawToggleAutocast), self.actions))
 
     @cached_property

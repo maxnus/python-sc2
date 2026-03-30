@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[6, 16]
 from __future__ import annotations
 
 import math
@@ -71,7 +70,6 @@ class BotAI(BotAIInternal):
             self._last_step_step_time * 1000,
         )
 
-    # pyre-ignore[11]
     def alert(self, alert_code: Alert) -> bool:
         """
         Check if alert is triggered in the current step.
@@ -252,24 +250,24 @@ class BotAI(BotAIInternal):
         """Find next expansion location."""
 
         closest = None
-        distance = math.inf
-        for el in self.expansion_locations_list:
+        best_distance = math.inf
+        start_position = self.game_info.player_start_location
+        for position in self.expansion_locations_list:
 
             def is_near_to_expansion(t):
-                return t.distance_to(el) < self.EXPANSION_GAP_THRESHOLD
+                return t.distance_to(position) < self.EXPANSION_GAP_THRESHOLD
 
             if any(map(is_near_to_expansion, self.townhalls)):
                 # already taken
                 continue
 
-            startp = self.game_info.player_start_location
-            d = await self.client.query_pathing(startp, el)
-            if d is None:
+            distance = await self.client.query_pathing(start_position, position)
+            if distance is None:
                 continue
 
-            if d < distance:
-                distance = d
-                closest = el
+            if distance < best_distance:
+                best_distance = distance
+                closest = position
 
         return closest
 
@@ -494,7 +492,11 @@ class BotAI(BotAIInternal):
                     return self.calculate_unit_value(UnitTypeId.ARCHON)
             unit_data = self.game_data.units[item_id.value]
             # Cost of morphs is automatically correctly calculated by 'calculate_ability_cost'
-            return self.game_data.calculate_ability_cost(unit_data.creation_ability.exact_id)
+            creation_ability = unit_data.creation_ability
+            if creation_ability is None:
+                logger.error(f"Unknown creation_ability in calculate_cost for item_id: {item_id}")
+                return Cost(0, 0)
+            return self.game_data.calculate_ability_cost(creation_ability.exact_id)
 
         if isinstance(item_id, UpgradeId):
             cost = self.game_data.upgrades[item_id.value].cost
@@ -568,11 +570,18 @@ class BotAI(BotAIInternal):
             ability_target: int = self.game_data.abilities[ability_id.value]._proto.target
             # Check if target is in range (or is a self cast like stimpack)
             if (
+                # Can't replace 1 with "Target.None.value" because ".None" doesn't seem to be a valid enum name
                 ability_target == 1
                 or ability_target == Target.PointOrNone.value
-                and isinstance(target, Point2)
-                and unit.distance_to(target) <= unit.radius + target.radius + cast_range
-            ):  # cant replace 1 with "Target.None.value" because ".None" doesnt seem to be a valid enum name
+                and (
+                    # Target is unit
+                    isinstance(target, Unit)
+                    and unit.distance_to(target) <= unit.radius + target.radius + cast_range
+                    # Target is position
+                    or isinstance(target, Point2)
+                    and unit.distance_to(target) <= unit.radius + cast_range
+                )
+            ):
                 return True
             # Check if able to use ability on a unit
             if (
@@ -622,8 +631,12 @@ class BotAI(BotAIInternal):
     async def can_place_single(self, building: AbilityId | UnitTypeId, position: Point2) -> bool:
         """Checks the placement for only one position."""
         if isinstance(building, UnitTypeId):
-            creation_ability = self.game_data.units[building.value].creation_ability.id
-            return (await self.client._query_building_placement_fast(creation_ability, [position]))[0]
+            creation_ability = self.game_data.units[building.value].creation_ability
+            if creation_ability is None:
+                logger.error(f"Unknown creation_ability in can_place_single for building: {building}")
+                return False
+            creation_ability_id = creation_ability.id
+            return (await self.client._query_building_placement_fast(creation_ability_id, [position]))[0]
         return (await self.client._query_building_placement_fast(building, [position]))[0]
 
     async def can_place(self, building: AbilityData | AbilityId | UnitTypeId, positions: list[Point2]) -> list[bool]:
@@ -639,17 +652,18 @@ class BotAI(BotAIInternal):
 
         :param building:
         :param position:"""
-        building_type = type(building)
-        assert type(building) in {AbilityData, AbilityId, UnitTypeId}, f"{building}, {building_type}"
-        if building_type == UnitTypeId:
-            building = self.game_data.units[building.value].creation_ability.id
-        elif building_type == AbilityData:
+        if isinstance(building, UnitTypeId):
+            creation_ability = self.game_data.units[building.value].creation_ability
+            if creation_ability is None:
+                return [False for _ in positions]
+            building = creation_ability.id
+        elif isinstance(building, AbilityData):
             warnings.warn(
                 "Using AbilityData is deprecated and may be removed soon. Please use AbilityId or UnitTypeId instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            building = building_type.id
+            building = building.id
 
         if isinstance(positions, (Point2, tuple)):
             warnings.warn(
@@ -657,6 +671,7 @@ class BotAI(BotAIInternal):
                 DeprecationWarning,
                 stacklevel=2,
             )
+            # pyrefly: ignore
             return await self.can_place_single(building, positions)
         assert isinstance(positions, list), f"Expected an iterable (list, tuple), but was: {positions}"
         assert isinstance(positions[0], Point2), (
@@ -692,7 +707,10 @@ class BotAI(BotAIInternal):
         assert isinstance(near, Point2), f"{near} is no Point2 object"
 
         if isinstance(building, UnitTypeId):
-            building = self.game_data.units[building.value].creation_ability.id
+            creation_ability = self.game_data.units[building.value].creation_ability
+            if creation_ability is None:
+                return None
+            building = creation_ability.id
 
         if await self.can_place_single(building, near) and (
             not addon_place or await self.can_place_single(AbilityId.TERRANBUILD_SUPPLYDEPOT, near.offset((2.5, -0.5)))
@@ -751,10 +769,13 @@ class BotAI(BotAIInternal):
         assert isinstance(upgrade_type, UpgradeId), f"{upgrade_type} is no UpgradeId"
         if upgrade_type in self.state.upgrades:
             return 1
-        creationAbilityID = self.game_data.upgrades[upgrade_type.value].research_ability.exact_id
+        research_ability = self.game_data.upgrades[upgrade_type.value].research_ability
+        if research_ability is None:
+            return 0
+        creation_ability_id = research_ability.exact_id
         for structure in self.structures.filter(lambda unit: unit.is_ready):
             for order in structure.orders:
-                if order.ability.exact_id == creationAbilityID:
+                if order.ability.exact_id == creation_ability_id:
                     return order.progress
         return 0
 
@@ -800,7 +821,7 @@ class BotAI(BotAIInternal):
         # SUPPLYDEPOTDROP is not in self.game_data.units, so bot_ai should not check the build progress via creation ability (worker abilities)
         if structure_type_value not in self.game_data.units:
             return max((s.build_progress for s in self.structures if s._proto.unit_type in equiv_values), default=0)
-        creation_ability_data: AbilityData = self.game_data.units[structure_type_value].creation_ability
+        creation_ability_data = self.game_data.units[structure_type_value].creation_ability
         if creation_ability_data is None:
             return 0
         creation_ability: AbilityId = creation_ability_data.exact_id
@@ -865,24 +886,30 @@ class BotAI(BotAIInternal):
         """
         if isinstance(unit_type, UpgradeId):
             return self.already_pending_upgrade(unit_type)
-        try:
-            ability = self.game_data.units[unit_type.value].creation_ability.exact_id
-        except AttributeError:
-            if unit_type in CREATION_ABILITY_FIX:
-                # Hotfix for checking pending archons
-                if unit_type == UnitTypeId.ARCHON:
-                    return self._abilities_count_and_build_progress[0][AbilityId.ARCHON_WARP_TARGET] / 2
-                # Hotfix for rich geysirs
-                return self._abilities_count_and_build_progress[0][CREATION_ABILITY_FIX[unit_type]]
-            logger.error(f"Uncaught UnitTypeId: {unit_type}")
+
+        if unit_type in CREATION_ABILITY_FIX:
+            # Hotfix for checking pending archons and other abilities
+            if unit_type == UnitTypeId.ARCHON:
+                return self._abilities_count_and_build_progress[0][AbilityId.ARCHON_WARP_TARGET] / 2
+            # Hotfix for rich geysirs
+            return self._abilities_count_and_build_progress[0][CREATION_ABILITY_FIX[unit_type]]
+
+        creation_ability = self.game_data.units[unit_type.value].creation_ability
+        if creation_ability is None:
+            logger.error(f"Unknown creation_ability in already_pending for unit_type: {unit_type}")
             return 0
-        return self._abilities_count_and_build_progress[0][ability]
+        ability_id = creation_ability.exact_id
+        return self._abilities_count_and_build_progress[0][ability_id]
 
     def worker_en_route_to_build(self, unit_type: UnitTypeId) -> float:
         """This function counts how many workers are on the way to start the construction a building.
 
         :param unit_type:"""
-        ability = self.game_data.units[unit_type.value].creation_ability.exact_id
+        creation_ability = self.game_data.units[unit_type.value].creation_ability
+        if creation_ability is None:
+            logger.error(f"Unknown creation_ability in worker_en_route_to_build for unit_type: {unit_type}")
+            return 0
+        ability = creation_ability.exact_id
         return self._worker_orders[ability]
 
     @property_cache_once_per_frame
@@ -896,7 +923,7 @@ class BotAI(BotAIInternal):
                 continue
             for order in worker.orders:
                 # When a construction is resumed, the worker.orders[0].target is the tag of the structure, else it is a Point2
-                worker_targets.add(order.target)
+                worker_targets.add(order.target)  # pyrefly: ignore
         return self.structures.filter(
             lambda structure: structure.build_progress < 1
             # Redundant check?
@@ -930,15 +957,15 @@ class BotAI(BotAIInternal):
         assert isinstance(near, (Unit, Point2))
         if not self.can_afford(building):
             return False
-        p = None
+        position = None
         gas_buildings = {UnitTypeId.EXTRACTOR, UnitTypeId.ASSIMILATOR, UnitTypeId.REFINERY}
         if isinstance(near, Unit) and building not in gas_buildings:
             near = near.position
         if isinstance(near, Point2):
             near = near.to2
         if isinstance(near, Point2):
-            p = await self.find_placement(building, near, max_distance, random_alternative, placement_step)
-            if p is None:
+            position = await self.find_placement(building, near, max_distance, random_alternative, placement_step)
+            if position is None:
                 return False
         builder = build_worker or self.select_build_worker(near)
         if builder is None:
@@ -947,7 +974,8 @@ class BotAI(BotAIInternal):
             assert isinstance(near, Unit)
             builder.build_gas(near)
             return True
-        self.do(builder.build(building, p), subtract_cost=True, ignore_warning=True)
+        # pyrefly: ignore
+        self.do(builder.build(building, position), subtract_cost=True, ignore_warning=True)
         return True
 
     def train(
@@ -1056,6 +1084,7 @@ class BotAI(BotAIInternal):
                 else:
                     # Normal train a unit from larva or inside a structure
                     successfully_trained = self.do(
+                        # pyrefly: ignore
                         structure.train(unit_type),
                         subtract_cost=True,
                         subtract_supply=True,
@@ -1079,6 +1108,7 @@ class BotAI(BotAIInternal):
                         trained_amount += 1
                         # With one command queue=False and one queue=True, you can queue 2 marines in a reactored barracks in one frame
                         successfully_trained = self.do(
+                            # pyrefly: ignore
                             structure.train(unit_type, queue=True),
                             subtract_cost=True,
                             subtract_supply=True,
@@ -1125,7 +1155,8 @@ class BotAI(BotAIInternal):
             return False
 
         research_structure_type: UnitTypeId = UPGRADE_RESEARCHED_FROM[upgrade_type]
-        # pyre-ignore[9]
+
+        # pyrefly: ignore
         required_tech_building: UnitTypeId | None = RESEARCH_INFO[research_structure_type][upgrade_type].get(
             "required_building", None
         )
@@ -1168,6 +1199,7 @@ class BotAI(BotAIInternal):
             ):
                 # Can_afford check was already done earlier in this function
                 successful_action: bool = self.do(
+                    # pyrefly: ignore
                     structure.research(upgrade_type),
                     subtract_cost=True,
                     ignore_warning=True,
@@ -1376,7 +1408,6 @@ class BotAI(BotAIInternal):
         """
         raise NotImplementedError
 
-    # pyre-ignore[11]
     async def on_end(self, game_result: Result) -> None:
         """Override this in your bot class. This function is called at the end of a game.
         Unsure if this function will be called on the laddermanager client as the bot process may forcefully be terminated.

@@ -26,18 +26,26 @@ class Controller(Protocol):
 
     async def create_game(self, game_map, players, realtime: bool, random_seed=None, disable_fog=None):
         req = sc_pb.RequestCreateGame(
-            local_map=sc_pb.LocalMap(map_path=str(game_map.relative_path)), realtime=realtime, disable_fog=disable_fog
+            local_map=sc_pb.LocalMap(map_path=str(game_map.relative_path)),
+            realtime=realtime,
+            # pyrefly: ignore
+            disable_fog=disable_fog,
         )
         if random_seed is not None:
             req.random_seed = random_seed
 
         for player in players:
+            # pyrefly: ignore
             p = req.player_setup.add()
             p.type = player.type.value
             if isinstance(player, Computer):
+                # pyrefly: ignore[bad-assignment]
                 p.race = player.race.value
+                # pyrefly: ignore[bad-assignment]
                 p.difficulty = player.difficulty.value
-                p.ai_build = player.ai_build.value
+                if player.ai_build is not None:
+                    # pyrefly: ignore[bad-assignment]
+                    p.ai_build = player.ai_build.value
 
         logger.info("Creating new game")
         logger.info(f"Map:     {game_map.name}")

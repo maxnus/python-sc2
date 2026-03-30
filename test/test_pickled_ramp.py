@@ -14,7 +14,6 @@ from pathlib import Path
 from loguru import logger
 
 from sc2.game_info import Ramp
-from sc2.ids.unit_typeid import UnitTypeId
 from sc2.position import Point2
 from sc2.unit import Unit
 from sc2.units import Units
@@ -25,6 +24,7 @@ from test.test_pickled_data import MAPS, get_map_specific_bot
 def pytest_generate_tests(metafunc):
     idlist = []
     argvalues = []
+    argnames = []
     for scenario in metafunc.cls.scenarios:
         idlist.append(scenario[0])
         items = scenario[1].items()
@@ -37,11 +37,11 @@ class TestClass:
     # Load all pickle files and convert them into bot objects from raw data (game_data, game_info, game_state)
     scenarios = [(map_path.name, {"map_path": map_path}) for map_path in MAPS]
 
-    MAPS_WITH_ODD_EXPANSION_COUNT: set[UnitTypeId] = {"Persephone AIE", "StargazersAIE", "Stasis LE"}
+    MAPS_WITH_ODD_EXPANSION_COUNT = {"Persephone AIE", "StargazersAIE", "Stasis LE"}
 
     def test_main_base_ramp(self, map_path: Path):
         bot = get_map_specific_bot(map_path)
-        # pyre-ignore[16]
+
         bot.game_info.map_ramps, bot.game_info.vision_blockers = bot.game_info._find_ramps_and_vision_blockers()
 
         # Test if main ramp works for all spawns
@@ -107,7 +107,7 @@ class TestClass:
         )
         # On N player maps, it is expected that there are N*X bases because of symmetry, at least for maps designed for 1vs1
         # Those maps in the list have an un-even expansion count
-        # pyre-ignore[16]
+
         expect_even_expansion_count = 1 if bot.game_info.map_name in self.MAPS_WITH_ODD_EXPANSION_COUNT else 0
         assert (
             len(bot.expansion_locations_list) % (len(bot.enemy_start_locations) + 1) == expect_even_expansion_count
@@ -120,7 +120,7 @@ class TestClass:
         for location in bot.enemy_start_locations:
             assert location in set(bot.expansion_locations_list), f"{location}, {bot.expansion_locations_list}"
         # Each expansion is supposed to have at least one geysir and 6-12 minerals
-        # pyre-ignore[16]
+
         for expansion, resource_positions in bot.expansion_locations_dict.items():
             assert isinstance(expansion, Point2)
             assert isinstance(resource_positions, Units)

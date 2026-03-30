@@ -163,7 +163,6 @@ jobs:
           docker cp pyproject.toml test_container:/root/python-sc2/
           docker cp uv.lock test_container:/root/python-sc2/
           docker cp sc2 test_container:/root/python-sc2/sc2
-          docker cp s2clientprotocol test_container:/root/python-sc2/s2clientprotocol
           docker cp test test_container:/root/python-sc2/test
           docker cp examples test_container:/root/python-sc2/examples
           docker exec -i test_container bash -c "pip install uv \

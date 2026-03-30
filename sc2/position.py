@@ -43,8 +43,9 @@ class Pointlike(tuple[float, ...]):
         """Calculate a single distance from a point or unit to another point or unit
 
         :param target:"""
-        p: tuple[float, ...] = target if isinstance(target, tuple) else target.position
-        return math.hypot(self[0] - p[0], self[1] - p[1])
+        # pyrefly: ignore
+        position: tuple[float, ...] = target if isinstance(target, tuple) else target.position
+        return math.hypot(self[0] - position[0], self[1] - position[1])
 
     def distance_to_point2(self, p: _PointLike) -> float:
         """Same as the function above, but should be a bit faster because of the dropped asserts
@@ -82,6 +83,7 @@ class Pointlike(tuple[float, ...]):
         assert ps, "ps is empty"
         closest_distance = math.inf
         for p in ps:
+            # pyrefly: ignore
             p2: tuple[float, ...] = p if isinstance(p, tuple) else p.position
             distance = self.distance_to_point2(p2)
             if distance <= closest_distance:
@@ -103,6 +105,7 @@ class Pointlike(tuple[float, ...]):
         assert ps, "ps is empty"
         furthest_distance = -math.inf
         for p in ps:
+            # pyrefly: ignore
             p2: tuple[float, ...] = p if isinstance(p, tuple) else p.position
             distance = self.distance_to_point2(p2)
             if distance >= furthest_distance:
@@ -130,6 +133,7 @@ class Pointlike(tuple[float, ...]):
         :param distance:
         :param limit:
         """
+        # pyrefly: ignore
         p2: tuple[float, ...] = p if isinstance(p, tuple) else p.position
         # assert self != p, f"self is {self}, p is {p}"
         # TODO test and fix this if statement
@@ -298,7 +302,7 @@ class Point2(Pointlike):
     def negative_offset(self: T, other: Point2) -> T:
         return self.__class__((self[0] - other[0], self[1] - other[1]))
 
-    def __add__(self, other: Point2) -> Point2:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def __add__(self, other: Point2) -> Point2:
         return self.offset(other)
 
     def __sub__(self, other: Point2) -> Point2:
@@ -313,12 +317,12 @@ class Point2(Pointlike):
     def __bool__(self) -> bool:
         return self[0] != 0 or self[1] != 0
 
-    def __mul__(self, other: _PointLike | float) -> Point2:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def __mul__(self, other: _PointLike | float) -> Point2:
         if isinstance(other, (int, float)):
             return Point2((self[0] * other, self[1] * other))
         return Point2((self[0] * other[0], self[1] * other[1]))
 
-    def __rmul__(self, other: _PointLike | float) -> Point2:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def __rmul__(self, other: _PointLike | float) -> Point2:
         return self.__mul__(other)
 
     def __truediv__(self, other: float | Point2) -> Point2:
@@ -352,7 +356,7 @@ class Point2(Pointlike):
 
 class Point3(Point2):
     @classmethod
-    def from_proto(cls, data: common_pb.Point | Point3) -> Point3:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def from_proto(cls, data: common_pb.Point | Point3) -> Point3:
         """
         :param data:
         """
@@ -401,7 +405,7 @@ class Size(Point2):
 
 class Rect(Point2):
     @classmethod
-    def from_proto(cls, data: common_pb.RectangleI) -> Rect:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def from_proto(cls, data: common_pb.RectangleI) -> Rect:
         """
         :param data:
         """
@@ -439,7 +443,7 @@ class Rect(Point2):
         return Size((self[2], self[3]))
 
     @property
-    def center(self) -> Point2:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def center(self) -> Point2:
         return Point2((self.x + self.width / 2, self.y + self.height / 2))
 
     def offset(self, p: _PointLike) -> Rect:

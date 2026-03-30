@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[16]
 """
 This script makes sure to run all bots in the examples folder to check if they can launch.
 """
@@ -115,10 +114,9 @@ matches: list[GameMatch] = []
 
 # Run example bots
 for bot_info in bot_infos:
-    # pyre-ignore[11]
-    bot_race: Race = bot_info["race"]
-    bot_path: str = bot_info["path"]
-    bot_class_name: str = bot_info["bot_class_name"]
+    bot_race: Race = bot_info["race"]  # pyrefly: ignore
+    bot_path: str = bot_info["path"]  # pyrefly: ignore
+    bot_class_name: str = bot_info["bot_class_name"]  # pyrefly: ignore
     module = import_module(bot_path)
     bot_class: type[BotAI] = getattr(module, bot_class_name)
 

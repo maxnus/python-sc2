@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[16, 19]
 """For the list of enums, see here
 
 https://github.com/Blizzard/s2client-proto/tree/bff45dae1fc685e6acbaae084670afb7d1c0832c/s2clientprotocol
@@ -38,7 +37,7 @@ Target = enum.Enum("Target", data_pb.AbilityData.Target.items())
 
 ActionResult = enum.Enum("ActionResult", error_pb.ActionResult.items())
 
-# pyre-ignore[11]
+
 race_worker: dict[Race, UnitTypeId] = {
     Race.Protoss: UnitTypeId.PROBE,
     Race.Terran: UnitTypeId.SCV,

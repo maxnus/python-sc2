@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[21]
 from __future__ import annotations
 
 import math
@@ -47,7 +46,7 @@ def distance_numpy_linalg_norm(p1, p2):
 
 def distance_sum_squared_sqrt(p1, p2) -> int | float:
     """Distance calculation using numpy"""
-    return np.sqrt(np.sum((p1 - p2) ** 2))
+    return np.sqrt(np.sum((p1 - p2) ** 2))  # pyrefly: ignore
 
 
 def distance_sum_squared(p1, p2) -> int | float:

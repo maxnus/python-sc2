@@ -14,7 +14,6 @@ import lzma
 import math
 import pickle
 import random
-import sys
 import unittest
 from contextlib import suppress
 from pathlib import Path
@@ -59,7 +58,7 @@ def build_bot_object_from_pickle_data(raw_game_data, raw_game_info, raw_observat
     game_info = GameInfo(raw_game_info.game_info)
     game_state = GameState(raw_observation)
     bot._initialize_variables()
-    client = Client(True)
+    client = Client(True)  # pyrefly: ignore
     bot._prepare_start(client=client, player_id=1, game_info=game_info, game_data=game_data)
     bot._prepare_step(state=game_state, proto_game_info=raw_game_info)
     return bot
@@ -72,10 +71,8 @@ def get_map_specific_bot(map_path: Path) -> BotAI:
 
 
 def test_protobuf_implementation():
-    """Make sure that cpp is used as implementation"""
-    # Doesn't seem to be implemented in newer python versions
-    if sys.version_info < (3, 10) and sys.platform != "darwin":
-        assert api_implementation.Type() == "cpp"
+    """Make sure that upb is used as implementation"""
+    assert api_implementation.Type() == "upb"
 
 
 def test_bot_ai():
@@ -124,7 +121,7 @@ def test_bot_ai():
     assert bot.time == 0
     assert bot.time_formatted in {"0:00", "00:00"}
     assert bot.start_location is None  # Is populated by main.py
-    bot.game_info.player_start_location = bot.townhalls.random.position
+    bot.game_info.player_start_location = bot.townhalls.random.position  # pyrefly: ignore
     assert bot.townhalls.random.position not in bot.enemy_start_locations
     assert bot.enemy_units == Units([], bot)
     assert bot.enemy_structures == Units([], bot)
@@ -152,13 +149,13 @@ def test_bot_ai():
 
     # Store old values for minerals, vespene
     old_values = bot.minerals, bot.vespene, bot.supply_cap, bot.supply_left, bot.supply_used
-    bot.vespene = 50
+    bot.vespene = 50  # pyrefly: ignore
     assert bot.can_afford(UpgradeId.WARPGATERESEARCH)
     assert bot.can_afford(AbilityId.RESEARCH_WARPGATE)
-    bot.minerals = 150
-    bot.supply_cap = 15
-    bot.supply_left = -1
-    bot.supply_used = 16
+    bot.minerals = 150  # pyrefly: ignore
+    bot.supply_cap = 15  # pyrefly: ignore
+    bot.supply_left = -1  # pyrefly: ignore
+    bot.supply_used = 16  # pyrefly: ignore
     # Confirm that units that don't cost supply can be built while at negative supply using can_afford function
     assert bot.can_afford(UnitTypeId.GATEWAY)
     assert bot.can_afford(UnitTypeId.PYLON)
@@ -166,6 +163,7 @@ def test_bot_ai():
     assert bot.can_afford(UnitTypeId.BANELING)
     assert not bot.can_afford(UnitTypeId.ZERGLING)
     assert not bot.can_afford(UnitTypeId.MARINE)
+    # pyrefly: ignore
     bot.minerals, bot.vespene, bot.supply_cap, bot.supply_left, bot.supply_used = old_values
 
     worker = bot.workers.random
@@ -291,13 +289,15 @@ def test_bot_ai():
 
     def calc_cost(item_id) -> Cost:
         if isinstance(item_id, AbilityId):
-            # pyre-ignore[16]
             return bot.game_data.calculate_ability_cost(item_id)
         elif isinstance(item_id, UpgradeId):
             return bot.game_data.upgrades[item_id.value].cost
         elif isinstance(item_id, UnitTypeId):
-            creation_ability: AbilityId = bot.game_data.units[item_id.value].creation_ability.exact_id
-            return bot.game_data.calculate_ability_cost(creation_ability)
+            creation_ability = bot.game_data.units[item_id.value].creation_ability
+            if creation_ability is None:
+                return Cost(0, 0)
+            creation_ability_id = creation_ability.exact_id
+            return bot.game_data.calculate_ability_cost(creation_ability_id)
         return Cost(0, 0)
 
     def assert_cost(item_id, real_cost: Cost):
@@ -490,11 +490,11 @@ def test_pixelmap():
     pathing_grid: PixelMap = bot.game_info.pathing_grid
     assert pathing_grid.bits_per_pixel
     assert pathing_grid.bytes_per_pixel == pathing_grid.bits_per_pixel // 8
-    assert not pathing_grid.is_set(Point2((0, 0)))
-    assert pathing_grid.is_empty(Point2((0, 0)))
+    assert not pathing_grid.is_set((0, 0))
+    assert pathing_grid.is_empty((0, 0))
     pathing_grid[Point2((0, 0))] = 123
-    assert pathing_grid.is_set(Point2((0, 0)))
-    assert not pathing_grid.is_empty(Point2((0, 0)))
+    assert pathing_grid.is_set((0, 0))
+    assert not pathing_grid.is_empty((0, 0))
     pathing_grid.flood_fill_all(lambda i: True)
     pathing_grid.copy()
     pathing_grid.print()
@@ -954,10 +954,12 @@ def test_exact_creation_ability():
             UnitTypeId.REFINERYRICH,
         ]:
             with test_case.assertRaises(AttributeError):
+                # pyrefly: ignore
                 _creation_ability = bot.game_data.units[unit_type.value].creation_ability.exact_id
             continue
 
         try:
+            # pyrefly: ignore
             _creation_ability = bot.game_data.units[unit_type.value].creation_ability.exact_id
         except AttributeError:
             if unit_type not in CREATION_ABILITY_FIX:
@@ -974,12 +976,10 @@ def test_dicts():
 
     bot: BotAI = get_map_specific_bot(random.choice(MAPS))
 
-    unit_id: UnitTypeId
-    data: dict
-    for unit_id, data in RESEARCH_INFO.items():
+    for data in RESEARCH_INFO.values():
         upgrade_id: UpgradeId
         for upgrade_id, upgrade_data in data.items():
-            research_ability_correct: AbilityId = upgrade_data["ability"]
+            research_ability_correct: AbilityId = upgrade_data["ability"]  # pyrefly: ignore
             research_ability_data_from_api = bot.game_data.upgrades[upgrade_id.value].research_ability
             if research_ability_data_from_api is None:
                 continue
@@ -996,12 +996,12 @@ def test_dicts():
 
 
 @given(
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
 )
 @settings(max_examples=500)
 def test_position_pointlike(x1, y1, x2, y2, x3, y3):
@@ -1063,10 +1063,10 @@ def test_position_pointlike(x1, y1, x2, y2, x3, y3):
 
 
 @given(
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
 )
 @settings(max_examples=500)
 def test_position_point2(x1, y1, x2, y2):
@@ -1121,9 +1121,9 @@ def test_position_point2(x1, y1, x2, y2):
 
 
 @given(
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
 )
 @settings(max_examples=10)
 def test_position_point3(x1, y1, z1):
@@ -1132,7 +1132,16 @@ def test_position_point3(x1, y1, z1):
     assert pos1.to3 == pos1
 
 
-@given(st.integers(min_value=-1e5, max_value=1e5), st.integers(min_value=-1e5, max_value=1e5))
+@given(
+    st.integers(
+        min_value=-1e5,  # pyrefly: ignore
+        max_value=1e5,  # pyrefly: ignore
+    ),
+    st.integers(
+        min_value=-1e5,  # pyrefly: ignore
+        max_value=1e5,  # pyrefly: ignore
+    ),
+)
 @settings(max_examples=20)
 def test_position_size(w, h):
     size = Size((w, h))
@@ -1141,10 +1150,10 @@ def test_position_size(w, h):
 
 
 @given(
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
-    st.integers(min_value=-1e5, max_value=1e5),
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
+    st.integers(min_value=-1e5, max_value=1e5),  # pyrefly: ignore
 )
 @settings(max_examples=20)
 def test_position_rect(x, y, w, h):

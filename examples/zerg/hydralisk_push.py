@@ -86,6 +86,13 @@ class Hydralisk(BotAI):
                 if self.can_afford(UnitTypeId.HYDRALISKDEN):
                     await self.build(UnitTypeId.HYDRALISKDEN, near=hq.position.towards(self.game_info.map_center, 5))
 
+        # If we have less than 22 drones, build drones
+        if self.supply_workers + self.already_pending(UnitTypeId.DRONE) < 22:
+            if larvae and self.can_afford(UnitTypeId.DRONE):
+                larva: Unit = larvae.random
+                larva.train(UnitTypeId.DRONE)
+                return
+
         # If we dont have both extractors: build them
         if (
             self.structures(UnitTypeId.SPAWNINGPOOL)
@@ -93,17 +100,10 @@ class Hydralisk(BotAI):
         ):
             if self.can_afford(UnitTypeId.EXTRACTOR):
                 # May crash if we dont have any drones
-                for vg in self.vespene_geyser.closer_than(10, hq):
+                for vespene_geyser in self.vespene_geyser.closer_than(10, hq):
                     drone: Unit = self.workers.random
-                    drone.build_gas(vg)
-                    break
-
-        # If we have less than 22 drones, build drones
-        if self.supply_workers + self.already_pending(UnitTypeId.DRONE) < 22:
-            if larvae and self.can_afford(UnitTypeId.DRONE):
-                larva: Unit = larvae.random
-                larva.train(UnitTypeId.DRONE)
-                return
+                    drone.build_gas(vespene_geyser)
+                    return
 
         # Saturate gas
         for a in self.gas_buildings:

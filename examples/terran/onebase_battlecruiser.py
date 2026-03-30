@@ -24,7 +24,6 @@ class BCRushBot(BotAI):
             return targets.random.position, True
 
         if self.units and min(u.position.distance_to(self.enemy_start_locations[0]) for u in self.units) < 5:
-            # pyre-ignore[7]
             return self.enemy_start_locations[0].position, False
 
         return self.mineral_field.random.position, False
@@ -60,11 +59,10 @@ class BCRushBot(BotAI):
 
         # Build more BCs
         if self.structures(UnitTypeId.FUSIONCORE) and self.can_afford(UnitTypeId.BATTLECRUISER):
-            for sp in self.structures(UnitTypeId.STARPORT).idle:
-                if sp.has_add_on:
-                    if not self.can_afford(UnitTypeId.BATTLECRUISER):
-                        break
-                    sp.train(UnitTypeId.BATTLECRUISER)
+            for starport in self.structures(UnitTypeId.STARPORT).idle:
+                if starport.has_add_on:
+                    if self.can_afford(UnitTypeId.BATTLECRUISER):
+                        starport.train(UnitTypeId.BATTLECRUISER)
 
         # Build more supply depots
         if self.supply_left < 6 and self.supply_used >= 14 and not self.already_pending(UnitTypeId.SUPPLYDEPOT):
@@ -82,15 +80,11 @@ class BCRushBot(BotAI):
                 if self.can_afford(UnitTypeId.REFINERY):
                     vgs: Units = self.vespene_geyser.closer_than(20, cc)
                     for vg in vgs:
-                        if self.gas_buildings.filter(lambda unit: unit.distance_to(vg) < 1):
-                            break
-
-                        worker: Unit | None = self.select_build_worker(vg.position)
-                        if worker is None:
-                            break
-
-                        worker.build_gas(vg)
-                        break
+                        has_gas_building = self.gas_buildings.filter(lambda unit: unit.distance_to(vg) < 1)
+                        if not has_gas_building:
+                            worker: Unit | None = self.select_build_worker(vg.position)
+                            if worker is not None:
+                                worker.build_gas(vg)
 
             # Build factory if we dont have one
             if self.tech_requirement_progress(UnitTypeId.FACTORY) == 1:
@@ -121,47 +115,53 @@ class BCRushBot(BotAI):
             return addon_points
 
         # Build starport techlab or lift if no room to build techlab
-        sp: Unit
-        for sp in self.structures(UnitTypeId.STARPORT).ready.idle:
-            if not sp.has_add_on and self.can_afford(UnitTypeId.STARPORTTECHLAB):
-                addon_points = starport_points_to_build_addon(sp.position)
+        starport: Unit
+        for starport in self.structures(UnitTypeId.STARPORT).ready.idle:
+            if not starport.has_add_on and self.can_afford(UnitTypeId.STARPORTTECHLAB):
+                addon_points = starport_points_to_build_addon(starport.position)
                 if all(
                     self.in_map_bounds(addon_point)
                     and self.in_placement_grid(addon_point)
                     and self.in_pathing_grid(addon_point)
                     for addon_point in addon_points
                 ):
-                    sp.build(UnitTypeId.STARPORTTECHLAB)
+                    starport.build(UnitTypeId.STARPORTTECHLAB)
                 else:
-                    sp(AbilityId.LIFT)
+                    starport(AbilityId.LIFT)
 
         def starport_land_positions(sp_position: Point2) -> list[Point2]:
             """Return all points that need to be checked when trying to land at a location where there is enough space to build an addon. Returns 13 points."""
             land_positions = [(sp_position + Point2((x, y))).rounded for x in range(-1, 2) for y in range(-1, 2)]
             return land_positions + starport_points_to_build_addon(sp_position)
 
-        # Find a position to land for a flying starport so that it can build an addon
-        for sp in self.structures(UnitTypeId.STARPORTFLYING).idle:
-            possible_land_positions_offset = sorted(
-                (Point2((x, y)) for x in range(-10, 10) for y in range(-10, 10)),
-                key=lambda point: point.x**2 + point.y**2,
-            )
-            offset_point: Point2 = Point2((-0.5, -0.5))
-            possible_land_positions = (sp.position.rounded + offset_point + p for p in possible_land_positions_offset)
-            for target_land_position in possible_land_positions:
-                land_and_addon_points: list[Point2] = starport_land_positions(target_land_position)
-                if all(
-                    self.in_map_bounds(land_pos) and self.in_placement_grid(land_pos) and self.in_pathing_grid(land_pos)
-                    for land_pos in land_and_addon_points
-                ):
-                    sp(AbilityId.LAND, target_land_position)
-                    break
+        def try_land_starports():
+            # Find a position to land for a flying starport so that it can build an addon
+            for starport in self.structures(UnitTypeId.STARPORTFLYING).idle:
+                possible_land_positions_offset = sorted(
+                    (Point2((x, y)) for x in range(-10, 10) for y in range(-10, 10)),
+                    key=lambda point: point.x**2 + point.y**2,
+                )
+                offset_point: Point2 = Point2((-0.5, -0.5))
+                possible_land_positions = (
+                    starport.position.rounded + offset_point + p for p in possible_land_positions_offset
+                )
+                for target_land_position in possible_land_positions:
+                    land_and_addon_points: list[Point2] = starport_land_positions(target_land_position)
+                    if all(
+                        self.in_map_bounds(land_pos)
+                        and self.in_placement_grid(land_pos)
+                        and self.in_pathing_grid(land_pos)
+                        for land_pos in land_and_addon_points
+                    ):
+                        starport(AbilityId.LAND, target_land_position)
+                        return
+
+        try_land_starports()
 
         # Show where it is flying to and show grid
-        unit: Unit
-        for sp in self.structures(UnitTypeId.STARPORTFLYING).filter(lambda unit: not unit.is_idle):
-            if isinstance(sp.order_target, Point2):
-                p: Point3 = Point3((*sp.order_target, self.get_terrain_z_height(sp.order_target)))
+        for starport in self.structures(UnitTypeId.STARPORTFLYING).filter(lambda unit: not unit.is_idle):
+            if isinstance(starport.order_target, Point2):
+                p: Point3 = Point3((*starport.order_target, self.get_terrain_z_height(starport.order_target)))
                 self.client.debug_box2_out(p, color=Point3((255, 0, 0)))
 
         # Build fusion core

@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[14, 15, 58]
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -42,7 +41,6 @@ class ExpiringDict(OrderedDict[Hashable, Any]):
 
     @property
     def frame(self) -> int:
-        # pyre-ignore[16]
         return self.bot.state.game_loop
 
     def __contains__(self, key: Hashable) -> bool:
@@ -75,7 +73,7 @@ class ExpiringDict(OrderedDict[Hashable, Any]):
 
     def __repr__(self) -> str:
         """Printable version of the dict instead of getting memory adress"""
-        print_list = []
+        print_list: list[str] = []
         with self.lock:
             for key, value in OrderedDict.items(self):
                 if self.frame - value[1] < self.max_age:

@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[16]
 """
 This testbot's purpose is to test the query behavior of the API.
 These query functions are:
@@ -48,7 +47,7 @@ class TestBot(BotAI):
         map_center = self.game_info.map_center
 
         # Spawn observer to be able to see enemy invisible units
-        await self.client.debug_create_unit([[UnitTypeId.OBSERVER, 1, map_center, 1]])
+        await self.client.debug_create_unit([(UnitTypeId.OBSERVER, 1, map_center, 1)])
         await self._advance_steps(10)
 
         # Remove everything close to map center
@@ -72,7 +71,7 @@ class TestBot(BotAI):
         if not isinstance(unit_type, list):
             unit_type = [unit_type]
         for i in unit_type:
-            await self.client.debug_create_unit([[i, 1, self.game_info.map_center, 1]])
+            await self.client.debug_create_unit([(i, 1, self.game_info.map_center, 1)])
 
     async def spawn_unit_enemy(self, unit_type: UnitTypeId | list[UnitTypeId]):
         await self._advance_steps(10)
@@ -80,9 +79,9 @@ class TestBot(BotAI):
             unit_type = [unit_type]
         for i in unit_type:
             if i == UnitTypeId.CREEPTUMOR:
-                await self.client.debug_create_unit([[i, 1, self.game_info.map_center + Point2((5, 5)), 2]])
+                await self.client.debug_create_unit([(i, 1, self.game_info.map_center + Point2((5, 5)), 2)])
             else:
-                await self.client.debug_create_unit([[i, 1, self.game_info.map_center, 2]])
+                await self.client.debug_create_unit([(i, 1, self.game_info.map_center, 2)])
 
     async def run_can_place(self) -> bool:
         result = await self.can_place(AbilityId.TERRANBUILD_COMMANDCENTER, [self.game_info.map_center])
@@ -195,7 +194,7 @@ class TestBot(BotAI):
         map_center = self.game_info.map_center
         barracks_spawn_point = map_center.offset(Point2((10, 10)))
         await self.client.debug_create_unit(
-            [[UnitTypeId.BARRACKS, 2, barracks_spawn_point, 1], [UnitTypeId.FACTORY, 2, barracks_spawn_point, 1]]
+            [(UnitTypeId.BARRACKS, 2, barracks_spawn_point, 1), (UnitTypeId.FACTORY, 2, barracks_spawn_point, 1)]
         )
         await self._advance_steps(10)
 
@@ -221,7 +220,7 @@ class TestBot(BotAI):
         map_center = self.game_info.map_center
         barracks_spawn_point = map_center.offset(Point2((10, 10)))
         await self.client.debug_create_unit(
-            [[UnitTypeId.BARRACKS, 2, barracks_spawn_point, 1], [UnitTypeId.FACTORY, 2, barracks_spawn_point, 1]]
+            [(UnitTypeId.BARRACKS, 2, barracks_spawn_point, 1), (UnitTypeId.FACTORY, 2, barracks_spawn_point, 1)]
         )
         await self._advance_steps(10)
 

@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[16]
 """
 This script makes sure to run all bots in the examples folder to check if they can launch against each other.
 """
@@ -96,16 +95,15 @@ matches: list[GameMatch] = []
 
 # Run bots against each other
 for bot_info1, bot_info2 in combinations(bot_infos, 2):
-    # pyre-ignore[11]
-    bot_race1: Race = bot_info1["race"]
-    bot_path: str = bot_info1["path"]
-    bot_class_name: str = bot_info1["bot_class_name"]
+    bot_race1: Race = bot_info1["race"]  # pyrefly: ignore
+    bot_path: str = bot_info1["path"]  # pyrefly: ignore
+    bot_class_name: str = bot_info1["bot_class_name"]  # pyrefly: ignore
     module = import_module(bot_path)
     bot_class1: type[BotAI] = getattr(module, bot_class_name)
 
-    bot_race2: Race = bot_info2["race"]
-    bot_path: str = bot_info2["path"]
-    bot_class_name: str = bot_info2["bot_class_name"]
+    bot_race2: Race = bot_info2["race"]  # pyrefly: ignore
+    bot_path: str = bot_info2["path"]  # pyrefly: ignore
+    bot_class_name: str = bot_info2["bot_class_name"]  # pyrefly: ignore
     module = import_module(bot_path)
     bot_class2: type[BotAI] = getattr(module, bot_class_name)
 

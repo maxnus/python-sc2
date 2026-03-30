@@ -18,7 +18,7 @@ def test_class():
     test_dict = {"hello": "its me mario", "does_this_work": "yes it works", "another_test": "yep this one also worked"}
 
     bot = BotAI()
-    test = ExpiringDict(bot, max_age_frames=10)
+    test = ExpiringDict(bot, max_age_frames=10)  # pyrefly: ignore
 
     for key, value in test_dict.items():
         test[key] = value
@@ -50,8 +50,8 @@ def test_class():
         assert key in test
         assert test[key] == item, (key, item)
         assert test.get(key) == item
-        assert test.get(key, with_age=True)[0] == item
-        assert test.get(key, with_age=True)[1] in {0, 1}
+        assert test.get(key, with_age=True)[0] == item  # pyrefly: ignore
+        assert test.get(key, with_age=True)[1] in {0, 1}  # pyrefly: ignore
 
     c = 0
     for _key in test:
@@ -65,7 +65,7 @@ def test_class():
 
     # Update from another dict
     updater_dict = {"new_key": "my_new_value"}
-    test.update(updater_dict)
+    test.update(updater_dict)  # pyrefly: ignore
     assert "does_this_work" in test
     assert "new_key" in test
 

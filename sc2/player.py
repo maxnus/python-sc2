@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[6, 11, 16, 29]
 from __future__ import annotations
 
 from abc import ABC
@@ -68,7 +67,7 @@ class Bot(AbstractPlayer):
         """
         assert isinstance(ai, BotAI) or ai is None, f"ai is of type {type(ai)}, inherit BotAI from bot_ai.py"
         super().__init__(PlayerType.Participant, race, name=name, fullscreen=fullscreen)
-        self.ai = ai
+        self.ai: BotAI = ai
 
     def __str__(self) -> str:
         if self.name is not None:
@@ -83,7 +82,9 @@ class Computer(AbstractPlayer):
         super().__init__(PlayerType.Computer, race, difficulty=difficulty, ai_build=ai_build)
 
     def __str__(self) -> str:
-        return f"Computer {self.difficulty._name_}({self.race._name_}, {self.ai_build.name})"
+        if self.ai_build is not None:
+            return f"Computer {self.difficulty._name_}({self.race._name_}, {self.ai_build.name})"
+        return f"Computer {self.difficulty._name_}({self.race._name_})"
 
 
 class Observer(AbstractPlayer):
@@ -99,7 +100,8 @@ class Player(AbstractPlayer):
         self,
         player_id: int,
         p_type: PlayerType,
-        requested_race: Race,
+        # None in case of observer
+        requested_race: Race | None,
         difficulty: Difficulty | None = None,
         actual_race: Race | None = None,
         name: str | None = None,

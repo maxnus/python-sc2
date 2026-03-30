@@ -1,9 +1,8 @@
-# pyre-ignore-all-errors[6, 9, 16, 29, 58]
 from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from aiohttp import ClientWebSocketResponse
 from loguru import logger
@@ -37,8 +36,10 @@ class Client(Protocol):
         # How many frames will be waited between iterations before the next one is called
         self.game_step: int = 4
         self.save_replay_path: str | None = save_replay_path
-        self._player_id = None
-        self._game_result = None
+        # The following will be set on join_game()
+        self._player_id: int = None  # pyrefly: ignore
+        # The following will be set on leave()
+        self._game_result: dict[int, Result] = None  # pyrefly: ignore
         # Store a hash value of all the debug requests to prevent sending the same ones again if they haven't changed last frame
         self._debug_hash_tuple_last_iteration: tuple[int, int, int, int] = (0, 0, 0, 0)
         self._debug_draw_last_frame = False
@@ -89,26 +90,26 @@ class Client(Protocol):
         if race is None:
             assert isinstance(observed_player_id, int), f"observed_player_id is of type {type(observed_player_id)}"
             # join as observer
-            req = sc_pb.RequestJoinGame(observed_player_id=observed_player_id, options=ifopts)
+            request = sc_pb.RequestJoinGame(observed_player_id=observed_player_id, options=ifopts)
         else:
             assert isinstance(race, Race)
-            req = sc_pb.RequestJoinGame(race=race.value, options=ifopts)
+            request = sc_pb.RequestJoinGame(race=race.value, options=ifopts)  # pyrefly: ignore[bad-argument-type]
 
         if portconfig:
-            req.server_ports.game_port = portconfig.server[0]
-            req.server_ports.base_port = portconfig.server[1]
+            request.server_ports.game_port = portconfig.server[0]
+            request.server_ports.base_port = portconfig.server[1]
 
             for ppc in portconfig.players:
-                p = req.client_ports.add()
+                p = request.client_ports.add()  # pyrefly: ignore
                 p.game_port = ppc[0]
                 p.base_port = ppc[1]
 
         if name is not None:
             assert isinstance(name, str), f"name is of type {type(name)}"
-            req.player_name = name
+            request.player_name = name
 
-        result = await self._execute(join_game=req)
-        self._game_result = None
+        result = await self._execute(join_game=request)
+        self._game_result = None  # pyrefly: ignore
         self._player_id = result.join_game.player_id
         return result.join_game.player_id
 
@@ -150,7 +151,7 @@ class Client(Protocol):
                 result = await self._execute(observation=sc_pb.RequestObservation())
                 assert result.observation.player_result
 
-            player_id_to_result = {}
+            player_id_to_result = dict[int, Result]()
             for pr in result.observation.player_result:
                 player_id_to_result[pr.player_id] = Result(pr.result)
             self._game_result = player_id_to_result
@@ -211,16 +212,21 @@ class Client(Protocol):
 
         # On realtime=True, might get an error here: sc2.protocol.ProtocolError: ['Not in a game']
         try:
-            res = await self._execute(
-                action=sc_pb.RequestAction(actions=(sc_pb.Action(action_raw=a) for a in combine_actions(actions)))
+            response = await self._execute(
+                action=sc_pb.RequestAction(
+                    # pyrefly: ignore
+                    actions=(sc_pb.Action(action_raw=action) for action in combine_actions(actions))
+                )
             )
         except ProtocolError:
             return []
         if return_successes:
-            return [ActionResult(r) for r in res.action.result]
-        return [ActionResult(r) for r in res.action.result if ActionResult(r) != ActionResult.Success]
+            return [ActionResult(result) for result in response.action.result]
+        return [
+            ActionResult(result) for result in response.action.result if ActionResult(result) != ActionResult.Success
+        ]
 
-    async def query_pathing(self, start: Unit | Point2 | Point3, end: Point2 | Point3) -> int | float | None:
+    async def query_pathing(self, start: Unit | Point2 | Point3, end: Point2 | Point3) -> float | None:
         """Caution: returns "None" when path not found
         Try to combine queries with the function below because the pathing query is generally slow.
 
@@ -238,25 +244,25 @@ class Client(Protocol):
             return None
         return distance
 
-    async def query_pathings(self, zipped_list: list[list[Unit | Point2 | Point3]]) -> list[float]:
+    async def query_pathings(self, zipped_list: list[tuple[Unit | Point2 | Point3, Point2 | Point3]]) -> list[float]:
         """Usage: await self.query_pathings([[unit1, target2], [unit2, target2]])
         -> returns [distance1, distance2]
         Caution: returns 0 when path not found
 
         :param zipped_list:
         """
-        assert zipped_list, "No zipped_list"
-        assert isinstance(zipped_list, list), f"{type(zipped_list)}"
-        assert isinstance(zipped_list[0], list), f"{type(zipped_list[0])}"
-        assert len(zipped_list[0]) == 2, f"{len(zipped_list[0])}"
-        assert isinstance(zipped_list[0][0], (Point2, Unit)), f"{type(zipped_list[0][0])}"
-        assert isinstance(zipped_list[0][1], Point2), f"{type(zipped_list[0][1])}"
-        if isinstance(zipped_list[0][0], Point2):
-            path = (
-                query_pb.RequestQueryPathing(start_pos=p1.as_Point2D, end_pos=p2.as_Point2D) for p1, p2 in zipped_list
+        assert zipped_list, "No entry in zipped_list"
+        path = (
+            query_pb.RequestQueryPathing(
+                # pyrefly: ignore
+                unit_tag=p1.tag if isinstance(p1, Unit) else None,
+                # pyrefly: ignore
+                start_pos=None if isinstance(p1, Unit) else p1.as_Point2D,
+                end_pos=p2.as_Point2D,
             )
-        else:
-            path = (query_pb.RequestQueryPathing(unit_tag=p1.tag, end_pos=p2.as_Point2D) for p1, p2 in zipped_list)
+            for p1, p2 in zipped_list
+        )
+        # pyrefly: ignore
         results = await self._execute(query=query_pb.RequestQuery(pathing=path))
         return [float(d.distance) for d in results.query.pathing]
 
@@ -272,6 +278,7 @@ class Client(Protocol):
         """
         result = await self._execute(
             query=query_pb.RequestQuery(
+                # pyrefly: ignore
                 placements=(
                     query_pb.RequestQueryBuildingPlacement(ability_id=ability.value, target_pos=position.as_Point2D)
                     for position in positions
@@ -297,6 +304,7 @@ class Client(Protocol):
         assert isinstance(ability, AbilityData)
         result = await self._execute(
             query=query_pb.RequestQuery(
+                # pyrefly: ignore
                 placements=(
                     query_pb.RequestQueryBuildingPlacement(ability_id=ability.id.value, target_pos=position.as_Point2D)
                     for position in positions
@@ -320,13 +328,14 @@ class Client(Protocol):
         assert units
         result = await self._execute(
             query=query_pb.RequestQuery(
+                # pyrefly: ignore
                 abilities=(query_pb.RequestQueryAvailableAbilities(unit_tag=unit.tag) for unit in units),
                 ignore_resource_requirements=ignore_resource_requirements,
             )
         )
         """ Fix for bots that only query a single unit, may be removed soon """
         if not input_was_a_list:
-            # pyre-fixme[7]
+            # pyrefly: ignore
             return [[AbilityId(a.ability_id) for a in b.abilities] for b in result.query.abilities][0]
         return [[AbilityId(a.ability_id) for a in b.abilities] for b in result.query.abilities]
 
@@ -334,9 +343,9 @@ class Client(Protocol):
         self, units: list[Unit] | Units, ignore_resource_requirements: bool = False
     ) -> dict[int, set[AbilityId]]:
         """Query abilities of multiple units"""
-
         result = await self._execute(
             query=query_pb.RequestQuery(
+                # pyrefly: ignore
                 abilities=(query_pb.RequestQueryAvailableAbilities(unit_tag=unit.tag) for unit in units),
                 ignore_resource_requirements=ignore_resource_requirements,
             )
@@ -348,7 +357,11 @@ class Client(Protocol):
         ch = ChatChannel.Team if team_only else ChatChannel.Broadcast
         await self._execute(
             action=sc_pb.RequestAction(
-                actions=[sc_pb.Action(action_chat=sc_pb.ActionChat(channel=ch.value, message=message))]
+                actions=[
+                    sc_pb.Action(
+                        action_chat=sc_pb.ActionChat(channel=ch.value, message=message)  # type: ignore[bad-argument-type]
+                    )
+                ]
             )
         )
 
@@ -368,7 +381,9 @@ class Client(Protocol):
                     sc_pb.Action(
                         action_raw=raw_pb.ActionRaw(
                             toggle_autocast=raw_pb.ActionRawToggleAutocast(
-                                ability_id=ability.value, unit_tags=(u.tag for u in units)
+                                ability_id=ability.value,
+                                # pyrefly: ignore
+                                unit_tags=(u.tag for u in units),
                             )
                         )
                     )
@@ -376,22 +391,18 @@ class Client(Protocol):
             )
         )
 
-    async def debug_create_unit(self, unit_spawn_commands: list[list[UnitTypeId | int | Point2 | Point3]]) -> None:
+    async def debug_create_unit(
+        self, unit_spawn_commands: list[tuple[UnitTypeId, int, Point2 | Point3, Literal[1, 2]]]
+    ) -> None:
         """Usage example (will spawn 5 marines in the center of the map for player ID 1):
         await self._client.debug_create_unit([[UnitTypeId.MARINE, 5, self._game_info.map_center, 1]])
 
         :param unit_spawn_commands:"""
-        assert isinstance(unit_spawn_commands, list)
-        assert unit_spawn_commands
-        assert isinstance(unit_spawn_commands[0], list)
-        assert len(unit_spawn_commands[0]) == 4
-        assert isinstance(unit_spawn_commands[0][0], UnitTypeId)
-        assert unit_spawn_commands[0][1] > 0  # careful, in realtime=True this function may create more units
-        assert isinstance(unit_spawn_commands[0][2], (Point2, Point3))
-        assert 1 <= unit_spawn_commands[0][3] <= 2
+        assert unit_spawn_commands, "List is empty"
 
         await self._execute(
             debug=sc_pb.RequestDebug(
+                # pyrefly: ignore
                 debug=(
                     debug_pb.DebugCommand(
                         create_unit=debug_pb.DebugCreateUnit(
@@ -417,6 +428,7 @@ class Client(Protocol):
         assert unit_tags
 
         await self._execute(
+            # pyrefly: ignore
             debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(kill_unit=debug_pb.DebugKillUnit(tag=unit_tags))])
         )
 
@@ -636,15 +648,19 @@ class Client(Protocol):
                             debug=[
                                 debug_pb.DebugCommand(
                                     draw=debug_pb.DebugDraw(
+                                        # pyrefly: ignore
                                         text=[text.to_proto() for text in self._debug_texts]
                                         if self._debug_texts
                                         else None,
+                                        # pyrefly: ignore
                                         lines=[line.to_proto() for line in self._debug_lines]
                                         if self._debug_lines
                                         else None,
+                                        # pyrefly: ignore
                                         boxes=[box.to_proto() for box in self._debug_boxes]
                                         if self._debug_boxes
                                         else None,
+                                        # pyrefly: ignore
                                         spheres=[sphere.to_proto() for sphere in self._debug_spheres]
                                         if self._debug_spheres
                                         else None,
@@ -666,6 +682,7 @@ class Client(Protocol):
             await self._execute(
                 debug=sc_pb.RequestDebug(
                     debug=[
+                        # pyrefly: ignore
                         debug_pb.DebugCommand(draw=debug_pb.DebugDraw(text=None, lines=None, boxes=None, spheres=None))
                     ]
                 )
@@ -700,7 +717,9 @@ class Client(Protocol):
                 debug=(
                     debug_pb.DebugCommand(
                         unit_value=debug_pb.DebugSetUnitValue(
-                            unit_value=unit_value, value=float(value), unit_tag=unit_tag
+                            unit_value=unit_value,  # pyrefly: ignore[bad-argument-type]
+                            value=float(value),
+                            unit_tag=unit_tag,
                         )
                     )
                     for unit_tag in unit_tags
@@ -713,57 +732,88 @@ class Client(Protocol):
         delay_in_ms = int(round(delay_in_seconds * 1000))
         await self._execute(
             debug=sc_pb.RequestDebug(
-                debug=[debug_pb.DebugCommand(test_process=debug_pb.DebugTestProcess(test=1, delay_ms=delay_in_ms))]
+                debug=[
+                    debug_pb.DebugCommand(
+                        test_process=debug_pb.DebugTestProcess(
+                            test=1,  # pyrefly: ignore
+                            delay_ms=delay_in_ms,
+                        )
+                    )
+                ]
             )
         )
 
     async def debug_show_map(self) -> None:
         """Reveals the whole map for the bot. Using it a second time disables it again."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=1)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=1)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_control_enemy(self) -> None:
         """Allows control over enemy units and structures similar to team games control - does not allow the bot to spend the opponent's ressources. Using it a second time disables it again."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=2)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=2)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_food(self) -> None:
         """Should disable food usage (does not seem to work?). Using it a second time disables it again."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=3)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=3)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_free(self) -> None:
         """Units, structures and upgrades are free of mineral and gas cost. Using it a second time disables it again."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=4)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=4)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_all_resources(self) -> None:
         """Gives 5000 minerals and 5000 vespene to the bot."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=5)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=5)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_god(self) -> None:
         """Your units and structures no longer take any damage. Using it a second time disables it again."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=6)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=6)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_minerals(self) -> None:
         """Gives 5000 minerals to the bot."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=7)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=7)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_gas(self) -> None:
         """Gives 5000 vespene to the bot. This does not seem to be working."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=8)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=8)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_cooldown(self) -> None:
         """Disables cooldowns of unit abilities for the bot. Using it a second time disables it again."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=9)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=9)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_tech_tree(self) -> None:
         """Removes all tech requirements (e.g. can build a factory without having a barracks). Using it a second time disables it again."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=10)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=10)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_upgrade(self) -> None:
         """Researches all currently available upgrades. E.g. using it once unlocks combat shield, stimpack and 1-1. Using it a second time unlocks 2-2 and all other upgrades stay researched."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=11)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=11)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def debug_fast_build(self) -> None:
         """Sets the build time of units and structures and upgrades to zero. Using it a second time disables it again."""
-        await self._execute(debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=12)]))
+        await self._execute(
+            debug=sc_pb.RequestDebug(debug=[debug_pb.DebugCommand(game_state=12)])  # pyrefly: ignore[bad-argument-type]
+        )
 
     async def quick_save(self) -> None:
         """Saves the current game state to an in-memory bookmark.
@@ -787,12 +837,12 @@ class DrawItem:
             return debug_pb.Color(r=255, g=255, b=255)
         # Need to check if not of type Point3 because Point3 inherits from tuple
         if isinstance(color, (tuple, list)) or isinstance(color, Point3) and len(color) == 3:
-            return debug_pb.Color(r=color[0], g=color[1], b=color[2])
+            return debug_pb.Color(r=int(color[0]), g=int(color[1]), b=int(color[2]))
         # In case color is of type Point3
         r = getattr(color, "r", getattr(color, "x", 255))
         g = getattr(color, "g", getattr(color, "y", 255))
         b = getattr(color, "b", getattr(color, "z", 255))
-        # pyre-ignore[20]
+
         if max(r, g, b) <= 1:
             r *= 255
             g *= 255
@@ -819,6 +869,7 @@ class DrawItemScreenText(DrawItem):
             color=self.to_debug_color(self._color),
             text=self._text,
             virtual_pos=self._start_point.to3.as_Point,
+            # pyrefly: ignore
             world_pos=None,
             size=self._font_size,
         )
@@ -830,20 +881,21 @@ class DrawItemScreenText(DrawItem):
 class DrawItemWorldText(DrawItem):
     def __init__(
         self,
-        start_point: Point3 = None,
-        color: tuple[float, float, float] | list[float] | Point3 | None = None,
+        start_point: Point3,
+        color: tuple[float, float, float] | list[float] | Point3 | None,
         text: str = "",
         font_size: int = 8,
     ) -> None:
-        self._start_point: Point3 = start_point
-        self._color: Point3 = color
-        self._text: str = text
-        self._font_size: int = font_size
+        self._start_point = start_point
+        self._color = color
+        self._text = text
+        self._font_size = font_size
 
     def to_proto(self):
         return debug_pb.DebugText(
             color=self.to_debug_color(self._color),
             text=self._text,
+            # pyrefly: ignore
             virtual_pos=None,
             world_pos=self._start_point.as_Point,
             size=self._font_size,
@@ -856,13 +908,13 @@ class DrawItemWorldText(DrawItem):
 class DrawItemLine(DrawItem):
     def __init__(
         self,
-        start_point: Point3 = None,
-        end_point: Point3 = None,
+        start_point: Point3,
+        end_point: Point3,
         color: tuple[float, float, float] | list[float] | Point3 | None = None,
     ) -> None:
-        self._start_point: Point3 = start_point
-        self._end_point: Point3 = end_point
-        self._color: Point3 = color
+        self._start_point = start_point
+        self._end_point = end_point
+        self._color = color
 
     def to_proto(self):
         return debug_pb.DebugLine(
@@ -877,13 +929,13 @@ class DrawItemLine(DrawItem):
 class DrawItemBox(DrawItem):
     def __init__(
         self,
-        start_point: Point3 = None,
-        end_point: Point3 = None,
+        start_point: Point3,
+        end_point: Point3,
         color: tuple[float, float, float] | list[float] | Point3 | None = None,
     ) -> None:
-        self._start_point: Point3 = start_point
-        self._end_point: Point3 = end_point
-        self._color: Point3 = color
+        self._start_point = start_point
+        self._end_point = end_point
+        self._color = color
 
     def to_proto(self):
         return debug_pb.DebugBox(
@@ -899,13 +951,13 @@ class DrawItemBox(DrawItem):
 class DrawItemSphere(DrawItem):
     def __init__(
         self,
-        start_point: Point3 = None,
-        radius: float = None,
+        start_point: Point3,
+        radius: float,
         color: tuple[float, float, float] | list[float] | Point3 | None = None,
     ) -> None:
-        self._start_point: Point3 = start_point
-        self._radius: float = radius
-        self._color: Point3 = color
+        self._start_point = start_point
+        self._radius = radius
+        self._color = color
 
     def to_proto(self):
         return debug_pb.DebugSphere(

@@ -102,19 +102,21 @@ class TestBot(BotAI):
             if "TECHLAB" in structure_type.name:
                 continue
 
+            # pyrefly: ignore
             structure_upgrade_types: dict[UpgradeId, dict[str, AbilityId]] = RESEARCH_INFO[structure_type]
             data: dict[str, AbilityId]
             for upgrade_id, data in structure_upgrade_types.items():
                 # Collect data to spawn
-                research_ability: AbilityId = data.get("ability", None)
-                requires_power: bool = data.get("requires_power", False)
-                required_building: UnitTypeId = data.get("required_building", None)
+                research_ability: AbilityId = data.get("ability", None)  # pyrefly: ignore
+                requires_power: bool = data.get("requires_power", False)  # pyrefly: ignore
+                required_building: UnitTypeId = data.get("required_building", None)  # pyrefly: ignore
 
                 # Prevent linux crash
                 if (
                     research_ability.value not in self.game_data.abilities
                     or upgrade_id.value not in self.game_data.upgrades
                     or self.game_data.upgrades[upgrade_id.value].research_ability is None
+                    # pyrefly: ignore
                     or self.game_data.upgrades[upgrade_id.value].research_ability.exact_id != research_ability
                 ):
                     logger.info(
@@ -130,7 +132,7 @@ class TestBot(BotAI):
                 if required_building:
                     spawn_structures.append(required_building)
 
-                await self.client.debug_create_unit([[structure, 1, map_center, 1] for structure in spawn_structures])
+                await self.client.debug_create_unit([(structure, 1, map_center, 1) for structure in spawn_structures])
                 logger.info(
                     f"Spawning {structure_type} to research upgrade {upgrade_id} via research ability {research_ability}"
                 )
@@ -152,7 +154,7 @@ class TestBot(BotAI):
                 assert self.structures(structure_type), f"Structure {structure_type} has not been spawned in time"
 
                 # Try to research the upgrade
-                while 1:
+                while True:
                     upgrader_structures: Units = self.structures(structure_type)
                     # Upgrade has been researched, break
                     if upgrader_structures:
@@ -174,7 +176,6 @@ class EmptyBot(BotAI):
             await self.client.debug_kill_unit(self.units)
 
     async def on_step(self, iteration: int):
-        # pyre-ignore[16]
         map_center = self.game_info.map_center
         enemies = self.enemy_units | self.enemy_structures
         if enemies:

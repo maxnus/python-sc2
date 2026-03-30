@@ -15,7 +15,7 @@ from sc2.player import Bot
 
 
 def main_old():
-    result: list[Result] = run_game(
+    result: Result | list[Result | None] = run_game(
         maps.get("AcropolisLE"),
         [
             Bot(Race.Protoss, WarpGateBot()),

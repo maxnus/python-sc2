@@ -186,5 +186,5 @@ Git commit messages use [imperative-style messages](https://stackoverflow.com/a/
 To run pre-commit hooks (which run autoformatting and autosort imports) you can run
 ```sh
 uv run pre-commit install
-uv run pre-commit run --all-files --hook-stage push
+uv run pre-commit run --all-files --hook-stage pre-push
 ```

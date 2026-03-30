@@ -79,14 +79,12 @@ class WarpGateBot(BotAI):
         for nexus in self.townhalls.ready:
             vgs = self.vespene_geyser.closer_than(15, nexus)
             for vg in vgs:
-                if not self.can_afford(UnitTypeId.ASSIMILATOR):
-                    break
-                worker = self.select_build_worker(vg.position)
-                if worker is None:
-                    break
-                if not self.gas_buildings or not self.gas_buildings.closer_than(1, vg):
-                    worker.build_gas(vg)
-                    worker.stop(queue=True)
+                if self.can_afford(UnitTypeId.ASSIMILATOR):
+                    worker = self.select_build_worker(vg.position)
+                    if worker is not None:
+                        if not self.gas_buildings or not self.gas_buildings.closer_than(1, vg):
+                            worker.build_gas(vg)
+                            worker.stop(queue=True)
 
         # Research warp gate if cybercore is completed
         if (

@@ -55,7 +55,7 @@ def platform_detect():
     return pf
 
 
-PF = platform_detect()
+PF: str = platform_detect()
 
 
 def get_home():
@@ -68,12 +68,12 @@ def get_home():
 def get_user_sc2_install():
     """Attempts to find a user's SC2 install if their OS has ExecuteInfo.txt"""
     if USERPATH[PF]:
-        einfo = str(get_home() / Path(USERPATH[PF]))
+        einfo = str(get_home() / Path(USERPATH[PF]))  # pyrefly: ignore
         if Path(einfo).is_file():
             with Path(einfo).open() as f:
                 content = f.read()
             if content:
-                base = re.search(r" = (.*)Versions", content).group(1)
+                base = re.search(r" = (.*)Versions", content).group(1)  # pyrefly: ignore
                 if PF in {"WSL1", "WSL2"}:
                     base = str(wsl.win_path_to_wsl_path(base))
 
@@ -88,8 +88,9 @@ def get_env() -> None:
 
 
 def get_runner_args(cwd):
-    if "WINE" in os.environ:
-        runner_file = Path(os.environ.get("WINE"))
+    wine_path = os.environ.get("WINE")
+    if wine_path is not None:
+        runner_file = Path(wine_path)
         runner_file = runner_file if runner_file.is_file() else runner_file / "wine"
         """
         TODO Is converting linux path really necessary?
@@ -133,16 +134,16 @@ class _MetaPaths(type):
 
         try:
             base = os.environ.get("SC2PATH") or get_user_sc2_install() or BASEDIR[PF]
-            cls.BASE = Path(base).expanduser()
+            cls.BASE = Path(base).expanduser()  # pyrefly: ignore
             cls.EXECUTABLE = latest_executeble(cls.BASE / "Versions")
-            cls.CWD = cls.BASE / CWD[PF] if CWD[PF] else None
+            cls.CWD = cls.BASE / CWD[PF] if CWD[PF] else None  # pyrefly: ignore
 
-            cls.REPLAYS = cls.BASE / "Replays"
+            cls.REPLAYS = cls.BASE / "Replays"  # pyrefly: ignore
 
             if (cls.BASE / "maps").exists():
-                cls.MAPS = cls.BASE / "maps"
+                cls.MAPS = cls.BASE / "maps"  # pyrefly: ignore
             else:
-                cls.MAPS = cls.BASE / "Maps"
+                cls.MAPS = cls.BASE / "Maps"  # pyrefly: ignore
         except FileNotFoundError as e:
             logger.critical(f"SC2 installation not found: File '{e.filename}' does not exist.")
             sys.exit(1)

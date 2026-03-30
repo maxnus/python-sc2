@@ -89,7 +89,7 @@ class WorkerStackBot(BotAI):
                     # Move worker in front of the nexus to avoid deceleration until the last moment
                     if worker.distance_to(th) > th.radius + worker.radius + self.townhall_distance_threshold:
                         pos: Point2 = th.position
-                        # pyre-ignore[6]
+
                         worker.move(pos.towards(worker, th.radius * self.townhall_distance_factor))
                         worker.return_resource(queue=True)
                     else:
@@ -97,7 +97,7 @@ class WorkerStackBot(BotAI):
                         worker.gather(mineral, queue=True)
 
         # Print info every 30 game-seconds
-        # pyre-ignore[16]
+
         if self.state.game_loop % (22.4 * 30) == 0:
             logger.info(f"{self.time_formatted} Mined a total of {int(self.state.score.collected_minerals)} minerals")
 

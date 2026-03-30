@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[14, 15, 16]
 from __future__ import annotations
 
 import random

@@ -33,7 +33,10 @@ def combine_actions(action_iter: list[UnitCommand]):
         if combineable:
             # Combine actions with no target, e.g. lift, burrowup, burrowdown, siege, unsiege, uproot spines
             cmd = raw_pb.ActionRawUnitCommand(
-                ability_id=ability.value, unit_tags={u.unit.tag for u in items}, queue_command=queue
+                ability_id=ability.value,
+                # pyrefly: ignore
+                unit_tags={u.unit.tag for u in items},
+                queue_command=queue,
             )
             # Combine actions with target point, e.g. attack_move or move commands on a position
             if isinstance(target, Point2):
@@ -58,13 +61,17 @@ def combine_actions(action_iter: list[UnitCommand]):
             if target is None:
                 for u in items:
                     cmd = raw_pb.ActionRawUnitCommand(
-                        ability_id=ability.value, unit_tags={u.unit.tag}, queue_command=queue
+                        ability_id=ability.value,
+                        # pyrefly: ignore
+                        unit_tags={u.unit.tag},
+                        queue_command=queue,
                     )
                     yield raw_pb.ActionRaw(unit_command=cmd)
             elif isinstance(target, Point2):
                 for u in items:
                     cmd = raw_pb.ActionRawUnitCommand(
                         ability_id=ability.value,
+                        # pyrefly: ignore
                         unit_tags={u.unit.tag},
                         queue_command=queue,
                         target_world_space_pos=target.as_Point2D,
@@ -74,6 +81,7 @@ def combine_actions(action_iter: list[UnitCommand]):
                 for u in items:
                     cmd = raw_pb.ActionRawUnitCommand(
                         ability_id=ability.value,
+                        # pyrefly: ignore
                         unit_tags={u.unit.tag},
                         queue_command=queue,
                         target_unit_tag=target.tag,

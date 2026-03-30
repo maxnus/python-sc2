@@ -51,7 +51,7 @@ jobs:
           uv run pre-commit install
 
       - name: Run pre-commit hooks
-        run: uv run pre-commit run --all-files --hook-stage push
+        run: uv run pre-commit run --all-files --hook-stage pre-push
 
   generate_dicts_from_data_json:
     name: Generate dicts from data.json
@@ -80,7 +80,7 @@ jobs:
         run: |
           mv sc2/dicts sc2/dicts_old
           uv run python generate_dicts_from_data_json.py
-          uv run pre-commit run --all-files --hook-stage push || true
+          uv run pre-commit run --all-files --hook-stage pre-push || true
           rm -rf sc2/dicts/__pycache__ sc2/dicts_old/__pycache__
 
       - name: Upload generated dicts folder as artifact

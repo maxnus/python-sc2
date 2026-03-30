@@ -101,7 +101,6 @@ class MarineSplitChallenge(BotAI):
         step_size: int = 1,
         exclude_out_of_bounds: bool = True,
     ):
-        # pyre-ignore[16]
         pos = pos.position.rounded
         positions = {
             pos.offset(Point2((x, y)))
@@ -114,7 +113,6 @@ class MarineSplitChallenge(BotAI):
             positions = {
                 p
                 for p in positions
-                # pyre-ignore[16]
                 if 0 <= p[0] < self.game_info.pathing_grid.width and 0 <= p[1] < self.game_info.pathing_grid.height
             }
         return positions

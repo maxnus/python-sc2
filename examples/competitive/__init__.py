@@ -4,8 +4,9 @@ import asyncio
 import aiohttp
 from loguru import logger
 
-import sc2
 from sc2.client import Client
+from sc2.main import _play_game
+from sc2.portconfig import Portconfig
 from sc2.protocol import ConnectionAlreadyClosedError
 
 
@@ -41,7 +42,7 @@ def run_ladder_game(bot):
     else:
         ports = [lan_port + p for p in range(1, 6)]
 
-        portconfig = sc2.portconfig.Portconfig()
+        portconfig = Portconfig()
         portconfig.server = [ports[1], ports[2]]
         portconfig.players = [[ports[3], ports[4]]]
 
@@ -56,10 +57,11 @@ def run_ladder_game(bot):
 # Modified version of sc2.main._join_game to allow custom host and port, and to not spawn an additional sc2process (thanks to alkurbatov for fix)
 async def join_ladder_game(host, port, players, realtime, portconfig, save_replay_as=None, game_time_limit=None):
     ws_url = f"ws://{host}:{port}/sc2api"
+    # pyrefly: ignore
     ws_connection = await aiohttp.ClientSession().ws_connect(ws_url, timeout=120)
     client = Client(ws_connection)
     try:
-        result = await sc2.main._play_game(players[0], client, realtime, portconfig, game_time_limit)
+        result = await _play_game(players[0], client, realtime, portconfig, game_time_limit)
         if save_replay_as is not None:
             await client.save_replay(save_replay_as)
         # await client.leave()
@@ -68,6 +70,6 @@ async def join_ladder_game(host, port, players, realtime, portconfig, save_repla
         logger.error("Connection was closed before the game ended")
         return None
     finally:
-        ws_connection.close()
+        await ws_connection.close()
 
     return result

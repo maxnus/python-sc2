@@ -216,7 +216,7 @@ class TestBot(BotAI):
     async def test_botai_actions5(self):
         # Test BotAI action: self.expand_now() which tests for get_next_expansion, select_build_worker, can_place, find_placement, build and can_afford
         # Wait till worker has started construction of CC
-        while 1:
+        while True:
             if self.can_afford(UnitTypeId.COMMANDCENTER):
                 await self.get_next_expansion()
                 await self.expand_now()
@@ -241,9 +241,9 @@ class TestBot(BotAI):
         # Test if reaper grenade shows up in effects
         center = self.game_info.map_center
 
-        while 1:
+        while True:
             if self.units(UnitTypeId.REAPER).amount < 10:
-                await self.client.debug_create_unit([[UnitTypeId.REAPER, 10, center, 1]])
+                await self.client.debug_create_unit([(UnitTypeId.REAPER, 10, center, 1)])
 
             for reaper in self.units(UnitTypeId.REAPER):
                 reaper(AbilityId.KD8CHARGE_KD8CHARGE, center)
@@ -266,9 +266,9 @@ class TestBot(BotAI):
     async def test_botai_actions7(self):
         # Test ravager effects
         center = self.game_info.map_center
-        while 1:
+        while True:
             if self.units(UnitTypeId.RAVAGER).amount < 10:
-                await self.client.debug_create_unit([[UnitTypeId.RAVAGER, 10, center, 1]])
+                await self.client.debug_create_unit([(UnitTypeId.RAVAGER, 10, center, 1)])
             for ravager in self.units(UnitTypeId.RAVAGER):
                 ravager(AbilityId.EFFECT_CORROSIVEBILE, center)
 
@@ -291,15 +291,15 @@ class TestBot(BotAI):
         # Test if train function works on hatchery, lair, hive
         center = self.game_info.map_center
         if not self.structures(UnitTypeId.HIVE):
-            await self.client.debug_create_unit([[UnitTypeId.HIVE, 1, center, 1]])
+            await self.client.debug_create_unit([(UnitTypeId.HIVE, 1, center, 1)])
         if not self.structures(UnitTypeId.LAIR):
-            await self.client.debug_create_unit([[UnitTypeId.LAIR, 1, center, 1]])
+            await self.client.debug_create_unit([(UnitTypeId.LAIR, 1, center, 1)])
         if not self.structures(UnitTypeId.HATCHERY):
-            await self.client.debug_create_unit([[UnitTypeId.HATCHERY, 1, center, 1]])
+            await self.client.debug_create_unit([(UnitTypeId.HATCHERY, 1, center, 1)])
         if not self.structures(UnitTypeId.SPAWNINGPOOL):
-            await self.client.debug_create_unit([[UnitTypeId.SPAWNINGPOOL, 1, center, 1]])
+            await self.client.debug_create_unit([(UnitTypeId.SPAWNINGPOOL, 1, center, 1)])
 
-        while 1:
+        while True:
             townhalls = self.structures.of_type({UnitTypeId.HIVE, UnitTypeId.LAIR, UnitTypeId.HATCHERY})
             if townhalls.amount == 3 and self.minerals >= 450 and not self.already_pending(UnitTypeId.QUEEN):
                 self.train(UnitTypeId.QUEEN, amount=3)
@@ -324,14 +324,14 @@ class TestBot(BotAI):
         center = self.game_info.map_center
         await self.client.debug_create_unit(
             [
-                [UnitTypeId.HIGHTEMPLAR, 1, center, 1],
-                [UnitTypeId.DARKTEMPLAR, 1, center + Point2((5, 0)), 1],
+                (UnitTypeId.HIGHTEMPLAR, 1, center, 1),
+                (UnitTypeId.DARKTEMPLAR, 1, center + Point2((5, 0)), 1),
             ]
         )
         await self._advance_steps(4)
         assert self.already_pending(UnitTypeId.ARCHON) == 0
 
-        while 1:
+        while True:
             for templar in self.units.of_type({UnitTypeId.HIGHTEMPLAR, UnitTypeId.DARKTEMPLAR}):
                 templar(AbilityId.MORPH_ARCHON)
 
@@ -365,7 +365,7 @@ class TestBot(BotAI):
         center = self.game_info.map_center
 
         target_amount = 400
-        while 1:
+        while True:
             bane_nests = self.structures(UnitTypeId.BANELINGNEST)
             lings = self.units(UnitTypeId.ZERGLING)
             banes = self.units(UnitTypeId.BANELING)
@@ -377,10 +377,10 @@ class TestBot(BotAI):
 
             # Spawn units
             if not bane_nests:
-                await self.client.debug_create_unit([[UnitTypeId.BANELINGNEST, 1, center, 1]])
+                await self.client.debug_create_unit([(UnitTypeId.BANELINGNEST, 1, center, 1)])
             current_amount = banes.amount + bane_cocoons.amount + lings.amount
             if current_amount < target_amount:
-                await self.client.debug_create_unit([[UnitTypeId.ZERGLING, target_amount - current_amount, center, 1]])
+                await self.client.debug_create_unit([(UnitTypeId.ZERGLING, target_amount - current_amount, center, 1)])
 
             if lings.amount >= target_amount and self.minerals >= 10_000 and self.vespene >= 10_000:
                 for ling in lings:
@@ -408,11 +408,11 @@ class TestBot(BotAI):
         map_center = self.game_info.map_center
 
         while not self.units(UnitTypeId.RAVEN):
-            await self.client.debug_create_unit([[UnitTypeId.RAVEN, 1, map_center, 1]])
+            await self.client.debug_create_unit([(UnitTypeId.RAVEN, 1, map_center, 1)])
             await self._advance_steps(2)
 
         while not self.enemy_units(UnitTypeId.INFESTOR):
-            await self.client.debug_create_unit([[UnitTypeId.INFESTOR, 1, map_center, 2]])
+            await self.client.debug_create_unit([(UnitTypeId.INFESTOR, 1, map_center, 2)])
             await self._advance_steps(2)
 
         raven = self.units(UnitTypeId.RAVEN)[0]
@@ -421,7 +421,7 @@ class TestBot(BotAI):
         await self._advance_steps(4)
 
         enemy = self.enemy_units(UnitTypeId.INFESTOR)[0]
-        while 1:
+        while True:
             raven = self.units(UnitTypeId.RAVEN)[0]
             raven(AbilityId.EFFECT_ANTIARMORMISSILE, enemy)
             await self._advance_steps(2)
@@ -440,7 +440,7 @@ class TestBot(BotAI):
             await self.client.debug_all_resources()
             await self._advance_steps(2)
 
-        while 1:
+        while True:
             # Once depot is under construction: debug kill scv -> advance simulation: should now match the test case
             if self.structures(UnitTypeId.SUPPLYDEPOT).not_ready.amount == 1:
                 construction_scvs: Units = self.workers.filter(lambda worker: worker.is_constructing_scv)
@@ -484,7 +484,6 @@ class EmptyBot(BotAI):
             await self.client.debug_kill_unit(self.units)
 
     async def on_step(self, iteration: int):
-        # pyre-ignore[16]
         map_center = self.game_info.map_center
         enemies = self.enemy_units | self.enemy_structures
         if enemies:

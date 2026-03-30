@@ -26,20 +26,20 @@ class Portconfig:
     """
 
     def __init__(
-        self, guests: int = 1, server_ports: list[int] | None = None, player_ports: list[int] | None = None
+        self, guests: int = 1, server_ports: list[int] | None = None, player_ports: list[list[int]] | None = None
     ) -> None:
         self.shared = None
         self._picked_ports: list[int] = []
         if server_ports:
-            self.server = server_ports
+            self.server: list[int] = server_ports
         else:
             self.server = [portpicker.pick_unused_port() for _ in range(2)]
             self._picked_ports.extend(self.server)
         if player_ports:
-            self.players = player_ports
+            self.players: list[list[int]] = player_ports
         else:
             self.players = [[portpicker.pick_unused_port() for _ in range(2)] for _ in range(guests)]
-            self._picked_ports.extend(port for player in self.players for port in player)
+            self._picked_ports.extend([port for player in self.players for port in player])
 
     def clean(self) -> None:
         while self._picked_ports:

@@ -1,4 +1,3 @@
-# pyre-ignore-all-errors[6, 16, 29]
 from __future__ import annotations
 
 import itertools
@@ -45,17 +44,17 @@ with warnings.catch_warnings():
 if TYPE_CHECKING:
     from sc2.client import Client
     from sc2.game_info import GameInfo
+    from sc2.bot_ai import BotAI
 
 
 class BotAIInternal(ABC):
     """Base class for bots."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self: BotAI, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._initialize_variables()
 
     @final
-    def _initialize_variables(self) -> None:
+    def _initialize_variables(self: BotAI) -> None:
         """Called from main.py internally"""
         self.cache: dict[str, Any] = {}
         # Specific opponent bot ID used in sc2ai ladder games http://sc2ai.net/ and on ai arena https://aiarena.net
@@ -104,8 +103,9 @@ class BotAIInternal(ABC):
         self.warp_gate_count: int = 0
         self.actions: list[UnitCommand] = []
         self.blips: set[Blip] = set()
-        # pyre-ignore[11]
-        self.race: Race | None = None
+
+        # Will be set on AbstractPlayer init
+        self.race: Race = None  # pyrefly: ignore
         self.enemy_race: Race | None = None
         self.enemy_starting_race: Race | None = None
         self._generated_frame = -100
@@ -164,7 +164,7 @@ class BotAIInternal(ABC):
 
     @final
     @property_cache_once_per_frame
-    def expansion_locations(self) -> dict[Point2, Units]:
+    def expansion_locations(self: BotAI) -> dict[Point2, Units]:
         """Same as the function above."""
         assert self._expansion_positions_list, (
             "self._find_expansion_locations() has not been run yet, so accessing the list of expansion locations is pointless."
@@ -193,7 +193,8 @@ class BotAIInternal(ABC):
         if not group:
             raise ValueError("Cannot calculate center of empty group")
 
-        total_x = total_y = 0
+        total_x: float = 0
+        total_y: float = 0
         for unit in group:
             total_x += unit.position.x
             total_y += unit.position.y
@@ -356,7 +357,7 @@ class BotAIInternal(ABC):
 
         # Distance offsets we apply to center of each resource group to find expansion position
         offset_range: int = 7
-        offsets = [
+        offsets: list[tuple[float, float]] = [
             (x, y)
             for x, y in itertools.product(range(-offset_range, offset_range + 1), repeat=2)
             if 4 < math.hypot(x, y) <= 8
@@ -439,17 +440,20 @@ class BotAIInternal(ABC):
                 if unit.type_id in CREATION_ABILITY_FIX:
                     if unit.type_id == UnitTypeId.ARCHON:
                         # Hotfix for archons in morph state
-                        creation_ability = AbilityId.ARCHON_WARP_TARGET
-                        abilities_amount[creation_ability] += 2
+                        creation_ability_id = AbilityId.ARCHON_WARP_TARGET
+                        abilities_amount[creation_ability_id] += 2
                     else:
                         # Hotfix for rich geysirs
-                        creation_ability = CREATION_ABILITY_FIX[unit.type_id]
-                        abilities_amount[creation_ability] += 1
+                        creation_ability_id = CREATION_ABILITY_FIX[unit.type_id]
+                        abilities_amount[creation_ability_id] += 1
                 else:
-                    creation_ability: AbilityId = self.game_data.units[unit.type_id.value].creation_ability.exact_id
-                    abilities_amount[creation_ability] += 1
-                max_build_progress[creation_ability] = max(
-                    max_build_progress.get(creation_ability, 0), unit.build_progress
+                    creation_ability = self.game_data.units[unit.type_id.value].creation_ability
+                    if creation_ability is None:
+                        continue
+                    creation_ability_id = creation_ability.exact_id
+                    abilities_amount[creation_ability_id] += 1
+                max_build_progress[creation_ability_id] = max(
+                    max_build_progress.get(creation_ability_id, 0), unit.build_progress
                 )
 
         return abilities_amount, max_build_progress
@@ -475,7 +479,7 @@ class BotAIInternal(ABC):
 
     @final
     def do(
-        self,
+        self: BotAI,
         action: UnitCommand,
         subtract_cost: bool = False,
         subtract_supply: bool = False,
@@ -544,7 +548,7 @@ class BotAIInternal(ABC):
         return True
 
     @final
-    async def synchronous_do(self, action: UnitCommand):
+    async def synchronous_do(self: BotAI, action: UnitCommand):
         """
         Not recommended. Use self.do instead to reduce lag.
         This function is only useful for realtime=True in the first frame of the game to instantly produce a worker
@@ -556,7 +560,7 @@ class BotAIInternal(ABC):
         if not self.can_afford(action.ability):
             logger.warning(f"Cannot afford action {action}")
             return ActionResult.Error
-        r = await self.client.actions(action)
+        r: ActionResult = await self.client.actions(action)  # pyrefly: ignore
         if not r:  # success
             cost = self.game_data.calculate_ability_cost(action.ability)
             self.minerals -= cost.minerals
@@ -596,11 +600,14 @@ class BotAIInternal(ABC):
                 # Different action, return True
                 return True
             with suppress(AttributeError):
-                if current_action.target == action.target.tag:
+                if current_action.target == action.target.tag:  # pyrefly: ignore
                     # Same action, remove action if same target unit
                     return False
             with suppress(AttributeError):
-                if action.target.x == current_action.target.x and action.target.y == current_action.target.y:
+                if (
+                    # pyrefly: ignore
+                    action.target.x == current_action.target.x and action.target.y == current_action.target.y
+                ):
                     # Same action, remove action if same target position
                     return False
             return True
@@ -651,7 +658,7 @@ class BotAIInternal(ABC):
         self._time_before_step: float = time.perf_counter()
 
     @final
-    def _prepare_step(self, state: GameState, proto_game_info: sc_pb.Response) -> None:
+    def _prepare_step(self: BotAI, state: GameState, proto_game_info: sc_pb.Response) -> None:
         """
         :param state:
         :param proto_game_info:
@@ -692,7 +699,7 @@ class BotAIInternal(ABC):
             self.enemy_race = Race(self.all_enemy_units.first.race)
 
     @final
-    def _prepare_units(self) -> None:
+    def _prepare_units(self: BotAI) -> None:
         # Set of enemy units detected by own sensor tower, as blips have less unit information than normal visible units
         self.blips: set[Blip] = set()
         self.all_units: Units = Units([], self)
@@ -818,7 +825,7 @@ class BotAIInternal(ABC):
         return self.state.game_loop
 
     @final
-    async def _advance_steps(self, steps: int) -> None:
+    async def _advance_steps(self: BotAI, steps: int) -> None:
         """Advances the game loop by amount of 'steps'. This function is meant to be used as a debugging and testing tool only.
         If you are using this, please be aware of the consequences, e.g. 'self.units' will be filled with completely new data."""
         await self._after_step()
@@ -831,7 +838,7 @@ class BotAIInternal(ABC):
         await self.issue_events()
 
     @final
-    async def issue_events(self) -> None:
+    async def issue_events(self: BotAI) -> None:
         """This function will be automatically run from main.py and triggers the following functions:
         - on_unit_created
         - on_unit_destroyed
@@ -846,7 +853,7 @@ class BotAIInternal(ABC):
         await self._issue_vision_events()
 
     @final
-    async def _issue_unit_added_events(self) -> None:
+    async def _issue_unit_added_events(self: BotAI) -> None:
         for unit in self.units:
             if unit.tag not in self._units_previous_map and unit.tag not in self._unit_tags_seen_this_game:
                 self._unit_tags_seen_this_game.add(unit.tag)
@@ -863,14 +870,14 @@ class BotAIInternal(ABC):
                     await self.on_unit_type_changed(unit, previous_frame_unit.type_id)
 
     @final
-    async def _issue_upgrade_events(self) -> None:
+    async def _issue_upgrade_events(self: BotAI) -> None:
         difference = self.state.upgrades - self._previous_upgrades
         for upgrade_completed in difference:
             await self.on_upgrade_complete(upgrade_completed)
         self._previous_upgrades = self.state.upgrades
 
     @final
-    async def _issue_building_events(self) -> None:
+    async def _issue_building_events(self: BotAI) -> None:
         for structure in self.structures:
             if structure.tag not in self._structures_previous_map:
                 if structure.build_progress < 1:
@@ -902,7 +909,7 @@ class BotAIInternal(ABC):
                     await self.on_building_construction_complete(structure)
 
     @final
-    async def _issue_vision_events(self) -> None:
+    async def _issue_vision_events(self: BotAI) -> None:
         # Call events for enemy unit entered vision
         for enemy_unit in self.enemy_units:
             if enemy_unit.tag not in self._enemy_units_previous_map:
@@ -920,7 +927,7 @@ class BotAIInternal(ABC):
             await self.on_enemy_unit_left_vision(enemy_structure_tag)
 
     @final
-    async def _issue_unit_dead_events(self) -> None:
+    async def _issue_unit_dead_events(self: BotAI) -> None:
         for unit_tag in self.state.dead_units & set(self._all_units_previous_map):
             await self.on_unit_destroyed(unit_tag)
 

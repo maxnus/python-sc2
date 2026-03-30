@@ -99,7 +99,7 @@ class BanesBanesBanes(BotAI):
             for vg in self.vespene_geyser.closer_than(10, hq):
                 drone: Unit = self.workers.random
                 drone.build_gas(vg)
-                break
+                return
 
         # If we have less than 22 drones, build drones
         if self.supply_workers + self.already_pending(UnitTypeId.DRONE) < 22:

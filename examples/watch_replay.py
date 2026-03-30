@@ -21,7 +21,7 @@ class ObserverBot(ObserverAI):
 
 
 if __name__ == "__main__":
-    my_observer_ai = ObserverBot()
+    my_observer_ai = ObserverBot()  # pyrefly: ignore
     # Enter replay name here
     # The replay should be either in this folder and you can give it a relative path, or change it to the absolute path
     replay_name = "WorkerRush.SC2Replay"

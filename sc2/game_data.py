@@ -312,9 +312,6 @@ class Cost:
     vespene: int
     time: float | None = None
 
-    def __repr__(self) -> str:
-        return f"Cost({self.minerals}, {self.vespene})"
-
     def __eq__(self, other: Cost) -> bool:
         return self.minerals == other.minerals and self.vespene == other.vespene
 

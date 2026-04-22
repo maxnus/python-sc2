@@ -1134,6 +1134,11 @@ class Unit(HasPosition2D):
         Only works for own units."""
         return self.is_using_ability(IS_REPAIRING)
 
+    @cached_property
+    def repairable(self) -> bool:
+        """Checks if the unit is repairable."""
+        return self.is_mechanical or (self.is_structure and self.is_ready and self.race == Race.Terran)
+
     @property
     def add_on_tag(self) -> int:
         """Returns the tag of the addon of unit. If the unit has no addon, returns 0."""

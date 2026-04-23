@@ -1137,7 +1137,7 @@ class Unit(HasPosition2D):
     @cached_property
     def repairable(self) -> bool:
         """Checks if the unit is repairable."""
-        return self.is_mechanical or (self.is_structure and self.is_ready and self.race == Race.Terran)
+        return self.is_mechanical and self.is_ready and (self.race == Race.Terran or not self.is_structure)
 
     @property
     def add_on_tag(self) -> int:

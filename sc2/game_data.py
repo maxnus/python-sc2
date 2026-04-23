@@ -309,8 +309,8 @@ class Cost:
     The time is given in frames (22.4 frames per game second).
     """
 
-    minerals: int
-    vespene: int
+    minerals: float
+    vespene: float
     time: float | None = None
 
     def __eq__(self, other: Cost) -> bool:

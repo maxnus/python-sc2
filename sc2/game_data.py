@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from bisect import bisect_left
 from contextlib import suppress
 from dataclasses import dataclass
@@ -326,15 +327,22 @@ class Cost:
             return self
         if not self:
             return other
-        time = (self.time or 0) + (other.time or 0)
+        if self.time is not None or other.time is not None:
+            time = (self.time or 0) + (other.time or 0)
+        else:
+            time = None
         return Cost(self.minerals + other.minerals, self.vespene + other.vespene, time=time)
 
     def __sub__(self, other: Cost) -> Cost:
-        time = (self.time or 0) + (other.time or 0)
+        if self.time is not None or other.time is not None:
+            time = (self.time or 0) - (other.time or 0)
+        else:
+            time = None
         return Cost(self.minerals - other.minerals, self.vespene - other.vespene, time=time)
 
-    def __mul__(self, other: int) -> Cost:
-        return Cost(self.minerals * other, self.vespene * other, time=self.time)
+    def __mul__(self, other: float) -> Cost:
+        time = self.time * other if self.time is not None else None
+        return Cost(math.ceil(self.minerals * other), math.ceil(self.vespene * other), time=time)
 
-    def __rmul__(self, other: int) -> Cost:
-        return Cost(self.minerals * other, self.vespene * other, time=self.time)
+    def __rmul__(self, other: float) -> Cost:
+        return self.__mul__(other)

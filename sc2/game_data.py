@@ -323,10 +323,6 @@ class Cost:
         return self.minerals != 0 or self.vespene != 0
 
     def __add__(self, other: Cost) -> Cost:
-        if not other:
-            return self
-        if not self:
-            return other
         if self.time is not None or other.time is not None:
             time = (self.time or 0) + (other.time or 0)
         else:

@@ -37,10 +37,14 @@ class Protocol:
 
     async def __request(self, request: sc_pb.Request) -> sc_pb.Response:
         logger.debug(f"Sending request: {request!r}")
+        # A closed connection is raised as ConnectionAlreadyClosedError and only logged at info: whoever catches it knows
+        # whether it was expected, such as a ladder ending a game early, and logs it as such.
         try:
             await self._ws.send_bytes(request.SerializeToString())
-        except TypeError as exc:
-            logger.exception("Cannot send: Connection already closed.")
+        except (TypeError, ConnectionResetError) as exc:
+            # aiohttp raises TypeError on a closed websocket, and ClientConnectionResetError, a ConnectionResetError,
+            # on one that is closing.
+            logger.info("Cannot send: Connection already closed.")
             raise ConnectionAlreadyClosedError("Connection already closed.") from exc
         logger.debug("Request sent")
 
@@ -51,7 +55,7 @@ class Protocol:
             if self._status == Status.ended:
                 logger.info("Cannot receive: Game has already ended.")
                 raise ConnectionAlreadyClosedError("Game has already ended") from exc
-            logger.error("Cannot receive: Connection already closed.")
+            logger.info("Cannot receive: Connection already closed.")
             raise ConnectionAlreadyClosedError("Connection already closed.") from exc
         except asyncio.CancelledError:
             # If request is sent, the response must be received before reraising cancel
